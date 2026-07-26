@@ -17,5 +17,18 @@ namespace Action
         }
 
         BT::NodeStatus tick() override;
+
+    private:
+        // Heading sampling state used to derive turn rates (deg/s) for the 1C/2C decision.
+        void UpdateTurnRates(CPPBlackBoard* BB);
+        void UpdateCircleMode(CPPBlackBoard* BB);
+
+        bool   HasPrevHeading = false;
+        bool   HasTurnRate = false;
+        double PrevSampleTime_Sec = 0.0;
+        double PrevMyYaw_Degree = 0.0;
+        double PrevTargetYaw_Degree = 0.0;
+        double MyTurnRate_DegSec = 0.0;
+        double TargetTurnRate_DegSec = 0.0;
     };
 }
