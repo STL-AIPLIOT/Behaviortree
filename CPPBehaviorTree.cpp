@@ -68,7 +68,7 @@ void UCPPBehaviorTree::init()
 	Factory.registerNodeType<Action::AspectAngleUpdate>("AspectAngleUpdate");
 	Factory.registerNodeType<Action::DECO_BFMCheck>("DECO_BFMCheck");
 	Factory.registerNodeType<Action::DECO_DistanceCheck>("DECO_DistanceCheck");
-	Factory.registerNodeType<Action::Task_Empty>("Task_Empty");
+	Factory.registerNodeType<Action::Task_LeadEntry>("Task_LeadEntry");
 	Factory.registerNodeType<Action::Task_Pure>("Task_Pure");
 
 	Factory.registerNodeType<Action::PredictManeuver>("PredictManeuver");

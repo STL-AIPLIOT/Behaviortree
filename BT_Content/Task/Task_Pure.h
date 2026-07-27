@@ -10,6 +10,8 @@ using namespace BT;
 
 namespace Action
 {
+	// Simple final fallback that directs the aircraft straight toward the target
+	// when more advanced tracking behavior is unavailable.
 	class Task_Pure : public SyncActionNode
 	{
 	private:

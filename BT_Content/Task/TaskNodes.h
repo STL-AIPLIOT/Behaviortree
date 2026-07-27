@@ -1,18 +1,18 @@
 #pragma once
-#include "Task_Empty.h" //Àû±â µû¶ó°¡´Â ÄÚµå·Î °íÄ§
+#include "Task_LeadEntry.h" // Lead entry / follow-target init
 #include "Task_Pure.h"
-#include "Task_FollowTarget.h" // Àû±â¸¦ µû¶ó°¨
-#include "Task_ClimbToSafeAltitude.h" //1000ft ÀÌ»ó ±âµ¿
+#include "Task_FollowTarget.h" // ï¿½ï¿½ï¿½â¸¦ ï¿½ï¿½ï¿½ï¿½
+#include "Task_ClimbToSafeAltitude.h" //1000ft ï¿½Ì»ï¿½ ï¿½âµ¿
 
-#include "Task_AntiOvershoot.h" // OBFM±âµ¿
-#include "Task_LeadPursuit.h" // OBFM ±âµ¿
-#include "Task_EvasiveRollOrScissors.h" // DBFM ¹æ¾î ±âµ¿
-#include "Task_CounterTurn.h" // DBFM ¹æ¾î ±âµ¿
-#include "Task_RollReverseAttack.h" // DBFM ¹Ý°Ý ±âµ¿
-#include "Task_OneCircleAttack.h" // HABFM ±âµ¿
-#include "Task_TwoCircleAttack.h" // HABFM ±âµ¿
-#include "Task_ScissorBreakTurn.h" // Scissor ±âµ¿
-#include "Task_ScissorRollBack.h" // Scissor ±âµ¿
+#include "Task_AntiOvershoot.h" // OBFMï¿½âµ¿
+#include "Task_LeadPursuit.h" // OBFM ï¿½âµ¿
+#include "Task_EvasiveRollOrScissors.h" // DBFM ï¿½ï¿½ï¿½ ï¿½âµ¿
+#include "Task_CounterTurn.h" // DBFM ï¿½ï¿½ï¿½ ï¿½âµ¿
+#include "Task_RollReverseAttack.h" // DBFM ï¿½Ý°ï¿½ ï¿½âµ¿
+#include "Task_OneCircleAttack.h" // HABFM ï¿½âµ¿
+#include "Task_TwoCircleAttack.h" // HABFM ï¿½âµ¿
+#include "Task_ScissorBreakTurn.h" // Scissor ï¿½âµ¿
+#include "Task_ScissorRollBack.h" // Scissor ï¿½âµ¿
 
 #include "Task_MakeLOS.h"
 #include "Task_CloseDistance.h"

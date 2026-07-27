@@ -11,6 +11,8 @@
 
 namespace Action
 {
+    // Primary target-tracking behavior. Task_Pure remains the final fallback
+    // when FollowTarget heuristics do not produce a valid pursuit waypoint.
     class Task_FollowTarget : public BT::SyncActionNode
     {
     public:
@@ -25,27 +27,27 @@ namespace Action
         BT::NodeStatus tick() override;
 
     private:
-        // Pure/Lag ºÐ·ù ±âÁØ
-        static constexpr float EPS_DEG = 4.0f;   // Çã¿ë¿ÀÂ÷
-        static constexpr float HYS_DEG = 2.0f;   // È÷½ºÅ×¸®½Ã½º
+        // Pure/Lag ï¿½Ð·ï¿½ ï¿½ï¿½ï¿½ï¿½
+        static constexpr float EPS_DEG = 4.0f;   // ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
+        static constexpr float HYS_DEG = 2.0f;   // ï¿½ï¿½ï¿½ï¿½ï¿½×¸ï¿½ï¿½Ã½ï¿½
 
-        // Lag ÆÄ¶ó¹ÌÅÍ
+        // Lag ï¿½Ä¶ï¿½ï¿½ï¿½ï¿½
         static constexpr float K_LAG = 0.55f;
         static constexpr float D_MIN_REF = 300.0f;   // m
         static constexpr float D_MAX_REF = 1200.0f;  // m
 
-        // ¸ñÇ¥ À¯Áö(°Å¸®/AA/AO) º¸Á¤
+        // ï¿½ï¿½Ç¥ ï¿½ï¿½ï¿½ï¿½(ï¿½Å¸ï¿½/AA/AO) ï¿½ï¿½ï¿½ï¿½
         static constexpr float FT2M = 0.3048f;
         static constexpr float DMOD_FT_MIN = 300.0f;     // 300 ft
         static constexpr float DMOD_FT_MAX = 3000.0f;    // 3000 ft
         static constexpr float DMOD_MIN = DMOD_FT_MIN * FT2M;  // 91.44 m
         static constexpr float DMOD_MAX = DMOD_FT_MAX * FT2M;  // 914.4 m
 
-        static constexpr float K_RANGE_CLOSE = 0.4f; // ¸Ö¼ö·Ï LOS ´ç±è
-        static constexpr float K_RANGE_TIGHT = 0.15f; // ³Ê¹« °¡±õ°Ô ºÙ¾úÀ» ¶§ ¿ÏÈ­(Ht¹æÇâ)
+        static constexpr float K_RANGE_CLOSE = 0.4f; // ï¿½Ö¼ï¿½ï¿½ï¿½ LOS ï¿½ï¿½ï¿½
+        static constexpr float K_RANGE_TIGHT = 0.15f; // ï¿½Ê¹ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½Ù¾ï¿½ï¿½ï¿½ ï¿½ï¿½ ï¿½ï¿½È­(Htï¿½ï¿½ï¿½ï¿½)
 
-        static constexpr float K_AA = 8.0f;    // AA ¡æ 0¡Æ
-        static constexpr float K_AO = 4.0f;    // AO ¡æ 2¡Æ
+        static constexpr float K_AA = 8.0f;    // AA ï¿½ï¿½ 0ï¿½ï¿½
+        static constexpr float K_AO = 4.0f;    // AO ï¿½ï¿½ 2ï¿½ï¿½
 
         static inline float clampf(float v, float lo, float hi) { return std::max(lo, std::min(v, hi)); }
 

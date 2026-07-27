@@ -34,6 +34,7 @@ namespace Action
 
 		(*BB)->IsEnergySuperior = (myEnergy > targetEnergy);
 		(*BB)->IsEnergyInferior = (myEnergy < targetEnergy);
+		(*BB)->EnergyCompareResult = (myEnergy > targetEnergy) ? 1 : (myEnergy < targetEnergy ? -1 : 0);
 
 		return NodeStatus::SUCCESS;
 	}

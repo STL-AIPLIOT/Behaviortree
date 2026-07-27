@@ -10,9 +10,13 @@ PortsList Action::Task_Pure::providedPorts()
 NodeStatus Action::Task_Pure::tick()
 {
 	Optional<CPPBlackBoard*> BB = getInput<CPPBlackBoard*>("BB");
+	if (!BB || !(*BB))
+	{
+		return NodeStatus::FAILURE;
+	}
+
 	Vector3 TargetLocation = (*BB)->TargetLocaion_Cartesian;
 	(*BB)->VP_Cartesian = TargetLocation;
-
 
 	return NodeStatus::SUCCESS;
 }

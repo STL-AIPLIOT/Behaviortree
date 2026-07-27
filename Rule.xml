@@ -49,8 +49,14 @@
                     <SetBFMMode_HABFM BB="{BB}"/>
 
                     <Fallback name="HABFM_Action">
-                        <Task_OneCircleAttack BB="{BB}"/>
-                        <Task_TwoCircleAttack BB="{BB}"/>
+                        <!-- 선회 무한 루프 방지: 5초 내 미완료 시 자식을 halt하고 FAILURE 반환 -->
+                        <!-- Timeout에는 name 속성을 붙이지 말 것 (xml_parsing.cpp가 부모 name()으로 자식을 연결) -->
+                        <Timeout msec="5000">
+                            <Task_OneCircleAttack BB="{BB}"/>
+                        </Timeout>
+                        <Timeout msec="5000">
+                            <Task_TwoCircleAttack BB="{BB}"/>
+                        </Timeout>
                     </Fallback>
                 </Sequence>
 
@@ -87,6 +93,7 @@
                 </Sequence>
 
                 <!-- AlwaysSuccess 대신 실제 기본 행동 -->
+                <!-- Normal tracking: FollowTarget is the primary tracking behavior, Task_Pure is the final fallback. -->
                 <Fallback name="NormalTracking">
                     <Task_FollowTarget BB="{BB}"/>
                     <Task_Pure BB="{BB}"/>

@@ -584,16 +584,11 @@ TreeNode::Ptr XMLParser::Pimpl::createNodeFromXML(const XMLElement *element,
 
     if (node_parent)
     {
-		int Q = node_parent.use_count();
-		//if (auto control_parent = static_cast<ControlNode*>(node_parent.get()))
-		/*if (auto control_parent = (ControlNode*)(node_parent.get()))
-        {
-            control_parent->addChild(child_node.get());
-        }*/
-
-		if (node_parent.get()->name()=="Sequence" || node_parent.get()->name() == "Fallback" || node_parent.get()->name() == "SequenceStar")
+		// 부모의 name()(= XML의 name 속성값)을 문자열 비교하면,
+		// <Fallback name="HABFM_Action"> 처럼 별칭이 붙은 순간 자식이 조용히 버려진다.
+		// 노드의 실제 타입으로 판정한다.
+		if (auto control_parent = dynamic_cast<ControlNode*>(node_parent.get()))
 		{
-			auto control_parent = (ControlNode*)(node_parent.get());
 			control_parent->addChild(child_node.get());
 		}
        // if (auto decorator_parent = static_cast<DecoratorNode*>(node_parent.get()))
@@ -605,7 +600,6 @@ TreeNode::Ptr XMLParser::Pimpl::createNodeFromXML(const XMLElement *element,
 			|| node_parent.get()->name() == "SubTree" || node_parent.get()->name() == "Timeout"
 			|| node_parent.get()->name() == "CanRetry" || node_parent.get()->name() == "DECO_CounterAttackCheck")
 		{
-			auto decorator_parent = (DecoratorNode*)(node_parent.get());
 			decorator_parent->setChild(child_node.get());
 		}
     }
