@@ -85,6 +85,7 @@ void UCPPBehaviorTree::init()
 	Factory.registerNodeType<Action::Task_EvasiveRollOrScissors>("Task_EvasiveRollOrScissors");
 	Factory.registerNodeType<Action::Task_CounterTurn>("Task_CounterTurn");
 	Factory.registerNodeType<Action::DECO_CounterAttackCheck>("DECO_CounterAttackCheck");
+	Factory.registerNodeType<Action::DECO_CanRetry>("CanRetry");
 	Factory.registerNodeType<Action::Task_RollReverseAttack>("Task_RollReverseAttack");
 
 

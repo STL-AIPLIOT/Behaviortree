@@ -591,7 +591,14 @@ TreeNode::Ptr XMLParser::Pimpl::createNodeFromXML(const XMLElement *element,
 		{
 			control_parent->addChild(child_node.get());
 		}
-		else if (auto decorator_parent = dynamic_cast<DecoratorNode*>(node_parent.get()))
+       // if (auto decorator_parent = static_cast<DecoratorNode*>(node_parent.get()))
+		//if (auto decorator_parent = (DecoratorNode*)(node_parent.get()))
+  //      {
+  //          decorator_parent->setChild(child_node.get());
+  //      }
+		if (node_parent.get()->name() == "Decorator" || node_parent.get()->name() == "Inverter" || node_parent.get()->name() == "Repeat" || node_parent.get()->name() == "RetryUntilSuccesful"
+			|| node_parent.get()->name() == "SubTree" || node_parent.get()->name() == "Timeout"
+			|| node_parent.get()->name() == "CanRetry" || node_parent.get()->name() == "DECO_CounterAttackCheck")
 		{
 			decorator_parent->setChild(child_node.get());
 		}

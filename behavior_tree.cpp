@@ -56,7 +56,8 @@ void applyRecursiveVisitor(TreeNode* node, const std::function<void(TreeNode*)>&
     }
     //else if (auto decorator = dynamic_cast<BT::DecoratorNode*>(node))
 	else if (node->name() == "Decorator" || node->name() == "Inverter" || node->name() == "Repeat" || node->name() == "RetryUntilSuccesful"
-		|| node->name() == "SubTree" || node->name() == "Timeout")
+		|| node->name() == "SubTree" || node->name() == "Timeout"
+		|| node->name() == "CanRetry" || node->name() == "DECO_CounterAttackCheck")
     {
 		auto decorator = (DecoratorNode*)(node);
         applyRecursiveVisitor(decorator->child(), visitor);

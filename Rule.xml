@@ -77,9 +77,14 @@
 
                     <Fallback name="DBFM_Action">
 
-                        <DECO_CounterAttackCheck BB="{BB}">
-                            <Task_RollReverseAttack BB="{BB}"/>
-                        </DECO_CounterAttackCheck>
+                        <!-- 반격 시도가 4000ms 안에 끝나지 않으면 다음 tick에서 1회 재시도 -->
+                        <CanRetry max_retries="1" BB="{BB}">
+                            <Timeout msec="4000">
+                                <DECO_CounterAttackCheck BB="{BB}">
+                                    <Task_RollReverseAttack BB="{BB}"/>
+                                </DECO_CounterAttackCheck>
+                            </Timeout>
+                        </CanRetry>
 
                         <Task_EvasiveRollOrScissors BB="{BB}"/>
                         <Task_CounterTurn BB="{BB}"/>

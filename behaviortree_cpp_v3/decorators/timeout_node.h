@@ -114,18 +114,22 @@ class TimeoutNode : public DecoratorNode
         };
     }
 
-  private:
     /**
-     * timer_
+     * halt()
      *
-     * 제한 시간을 관리하기 위한 타이머 큐이다.
+     * 상위 노드가 TimeoutNode를 중단시킬 때 호출된다.
+     *
+     * 사용 목적:
+     * - 실행 중인 자식 노드를 중지한다.
+     * - 아직 남아 있는 타이머를 취소하고 timeout 상태를 초기화한다.
      *
      * 필요한 이유:
-     * - 자식 노드가 RUNNING 상태가 되었을 때 타이머를 시작한다.
-     * - 시간이 초과되면 자식 노드를 중단시키는 작업을 수행한다.
+     * - 초기화하지 않으면 다음에 다시 실행될 때 이전 타이머가 그대로 남아
+     *   시작하자마자 timeout으로 처리되는 문제가 생길 수 있다.
      */
-    TimerQueue timer_;
+    void halt() override;
 
+  private:
     /**
      * tick()
      *
@@ -213,6 +217,23 @@ class TimeoutNode : public DecoratorNode
      * - std::mutex를 사용하므로, 컴파일 환경에 따라 <mutex> include가 필요할 수 있다.
      */
     std::mutex timeout_mutex_;
+
+    /**
+     * timer_
+     *
+     * 제한 시간을 관리하기 위한 타이머 큐이다.
+     *
+     * 필요한 이유:
+     * - 자식 노드가 RUNNING 상태가 되었을 때 타이머를 시작한다.
+     * - 시간이 초과되면 자식 노드를 중단시키는 작업을 수행한다.
+     *
+     * 멤버 선언 순서 주의:
+     * - 멤버는 선언의 역순으로 소멸되므로, timer_를 마지막에 선언해야
+     *   소멸 시 타이머 스레드가 먼저 정리된다.
+     * - 그렇지 않으면 이미 소멸된 timeout_mutex_를 타이머 콜백이 잠그려다
+     *   프로그램이 죽을 수 있다.
+     */
+    TimerQueue timer_;
 };
 
 } // namespace BT
