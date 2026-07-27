@@ -66,7 +66,12 @@
 
                     <Fallback name="OBFM_Action">
                         <Task_AntiOvershoot BB="{BB}"/>
-                        <Task_LeadPursuit BB="{BB}"/>
+                        <!-- 추종이 3500ms 안에 끝나지 않으면 자식을 halt하고 FAILURE를 반환해 -->
+                        <!-- Fallback이 다음 자식(Task_FollowTarget)으로 넘어가게 한다. -->
+                        <!-- Timeout에는 name 속성을 붙이지 말 것 (xml_parsing.cpp:599가 부모 name()으로 자식을 연결) -->
+                        <Timeout msec="3500">
+                            <Task_LeadPursuit BB="{BB}"/>
+                        </Timeout>
                         <Task_FollowTarget BB="{BB}"/>
                     </Fallback>
                 </Sequence>
