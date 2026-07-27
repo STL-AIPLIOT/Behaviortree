@@ -36,6 +36,19 @@ TimeoutNode::TimeoutNode(const std::string& name, const NodeConfiguration& confi
 {
 }
 
+void TimeoutNode::halt()
+{
+    {
+        // cancel() is called outside of this scope, because the timer callback
+        // locks the same mutex.
+        std::unique_lock<std::mutex> lk( timeout_mutex_ );
+        timeout_started_ = false;
+        child_halted_ = false;
+    }
+    timer_.cancel(timer_id_);
+    DecoratorNode::halt();
+}
+
 NodeStatus TimeoutNode::tick()
 {
     if( read_parameter_from_ports_ )
