@@ -1,4 +1,5 @@
 #include "PredictManeuver.h"
+#include "PredictManeuverCsvLogger.h"
 #include <cmath>
 
 namespace Action
@@ -33,6 +34,16 @@ namespace Action
 		{
 			return NodeStatus::FAILURE;
 		}
+
+		/*
+		BFM 모드는 Rule.xml에서 이 노드보다 뒤에 결정되므로,
+		직전 프레임에 stage해 둔 각도 값을 지금 확정된 BFM 모드와 함께 기록한다.
+		PM_CSV_LOG가 설정되지 않았다면 아무 동작도 하지 않는다.
+		*/
+		PredictManeuverCsvLogger& csvLogger =
+			PredictManeuverCsvLogger::Instance();
+
+		csvLogger.FlushPending((*BB)->BFM);
 
 		const Vector3& currentPos =
 			(*BB)->TargetLocaion_Cartesian;
@@ -69,6 +80,12 @@ namespace Action
 
 		float sumDelta = 0.0f;
 
+		// CSV 기록용으로 가장 최근 한 쌍의 각도 값을 보관한다.
+		float lastPreviousYaw = 0.0f;
+		float lastCurrentYaw = 0.0f;
+		float lastRawDelta = 0.0f;
+		float lastNormalizedDelta = 0.0f;
+
 		// 연속된 Yaw 값 사이의 각도 변화를 계산한다.
 		for (size_t i = 1; i < prevHeadings.size(); ++i)
 		{
@@ -87,6 +104,11 @@ namespace Action
 				normalizeAngleDelta(rawDelta);
 
 			sumDelta += normalizedDelta;
+
+			lastPreviousYaw = previousYaw;
+			lastCurrentYaw = currentRecordedYaw;
+			lastRawDelta = rawDelta;
+			lastNormalizedDelta = normalizedDelta;
 		}
 
 		// 각도 차이의 개수는 방향 기록 개수보다 1개 적다.
@@ -95,6 +117,19 @@ namespace Action
 
 		const float avgDelta =
 			sumDelta / deltaCount;
+
+		// 이번 프레임의 각도 값을 stage 한다.
+		// 실제 기록은 다음 tick에서 BFM 모드가 확정된 뒤 이루어진다.
+		if (csvLogger.IsEnabled())
+		{
+			csvLogger.StageFrame(
+				(*BB)->RunningTime,
+				lastPreviousYaw,
+				lastCurrentYaw,
+				lastRawDelta,
+				lastNormalizedDelta,
+				avgDelta);
+		}
 
 		// 기존 코드의 회전 방향 기준을 그대로 유지한다.
 		if (avgDelta > TURN_THRESHOLD_DEG)
