@@ -5,6 +5,7 @@
 #include "Task_ClimbToSafeAltitude.h" //1000ft �̻� �⵿
 
 #include "Task_AntiOvershoot.h" // OBFM�⵿
+#include "Task_CornerLeadPursuit.h" // OBFM 기동 (코너 속도 밴드 전용 lead pursuit)
 #include "Task_LeadPursuit.h" // OBFM �⵿
 #include "Task_EvasiveRollOrScissors.h" // DBFM ��� �⵿
 #include "Task_CounterTurn.h" // DBFM ��� �⵿
