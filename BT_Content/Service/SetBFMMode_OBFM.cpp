@@ -25,12 +25,12 @@ namespace Action {  // ¡Ú Ãß°¡
 
         if (sight && e_sup && aa_ok && dist_ok) {
             BB->BFM = OBFM;
-            std::cout << "[SetBFMMode_OBFM] Enter OBFM (AA=" << AA
+            std::cout << "[SetBFMMode_OBFM] t=" << BB->RunningTime << "s | Enter OBFM (AA=" << AA
                 << ", D=" << D << ", EnergySup=" << e_sup << ")\n";
             return BT::NodeStatus::SUCCESS;
         }
 
-        std::cout << "[SetBFMMode_OBFM] Blocked: sight=" << sight
+        std::cout << "[SetBFMMode_OBFM] t=" << BB->RunningTime << "s | Blocked: sight=" << sight
             << ", e_sup=" << e_sup
             << ", AA=" << AA
             << ", D=" << D << "\n";

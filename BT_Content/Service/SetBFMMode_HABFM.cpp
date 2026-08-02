@@ -143,7 +143,7 @@ BT::NodeStatus SetBFMMode_HABFM::tick()
     {
         BB->BFM = HABFM;
         UpdateCircleMode(BB);
-        std::cout << "[SetBFMMode_HABFM] Enter HABFM | AA=" << aa
+        std::cout << "[SetBFMMode_HABFM] t=" << BB->RunningTime << "s | Enter HABFM | AA=" << aa
             << ", D=" << D << ", E=" << ec
             << " | myTR=" << MyTurnRate_DegSec << ", tgtTR=" << TargetTurnRate_DegSec
             << ", Circle=" << (BB->HABFM_CircleMode == ONE_CIRCLE ? "1C" :
@@ -151,7 +151,7 @@ BT::NodeStatus SetBFMMode_HABFM::tick()
         return BT::NodeStatus::SUCCESS;
     }
 
-    std::cout << "[SetBFMMode_HABFM] Blocked | sight=" << sight
+    std::cout << "[SetBFMMode_HABFM] t=" << BB->RunningTime << "s | Blocked | sight=" << sight
         << ", AA=" << aa << ", D=" << D << ", E=" << ec << "\n";
     return BT::NodeStatus::FAILURE;
 }

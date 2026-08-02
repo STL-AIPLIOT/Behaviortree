@@ -42,7 +42,7 @@ BT::NodeStatus SetBFMMode_DBFM::tick()
         bool geom_ok = (D >= 350.0f && D <= 1000.0f) && (AA < 60.0f);
         BB->IsCounterAttack = (energy_cmp > 0) && geom_ok;
 
-        std::cout << "[SetBFMMode_DBFM] DBFM 전환"
+        std::cout << "[SetBFMMode_DBFM] t=" << BB->RunningTime << "s | DBFM 전환"
             << " | D=" << D << ", LOS=" << los_deg
             << ", AA=" << AA << ", Energy=" << energy_cmp
             << " | Counter=" << (BB->IsCounterAttack ? "YES" : "NO") << "\n";
@@ -50,7 +50,7 @@ BT::NodeStatus SetBFMMode_DBFM::tick()
     }
 
     // 진입 실패 사유 로그
-    std::cout << "[SetBFMMode_DBFM] Blocked"
+    std::cout << "[SetBFMMode_DBFM] t=" << BB->RunningTime << "s | Blocked"
         << " | sight=" << sight
         << ", D=" << D << ", LOS=" << los_deg
         << ", AA=" << AA << "\n";
