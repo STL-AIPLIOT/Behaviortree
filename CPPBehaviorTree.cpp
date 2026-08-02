@@ -4,6 +4,14 @@
 #include "CPPBehaviorTree.h"
 
 
+/*
+Task가 쓰로틀을 정하지 않았을 때 쓰는 기본값.
+1.0은 이 값을 도입하기 전의 동작(Step에서 무조건 1.0으로 덮어쓰던 것)과 같다.
+에너지 관리를 실험할 때 여기부터 낮춰 본다.
+*/
+static constexpr float DEFAULT_THROTTLE = 1.0f;
+
+
 Vector3 UCPPBehaviorTree::LLAtoCartesian(Vector3 LLA, Vector3 BaseLLA)
 {
 	double eccentricitysquare, N, M;
@@ -79,6 +87,7 @@ void UCPPBehaviorTree::init()
 
 	Factory.registerNodeType<Action::SetBFMMode_OBFM>("SetBFMMode_OBFM");
 	Factory.registerNodeType<Action::Task_AntiOvershoot>("Task_AntiOvershoot");
+	Factory.registerNodeType<Action::Task_CornerLeadPursuit>("Task_CornerLeadPursuit");
 	Factory.registerNodeType<Action::Task_LeadPursuit>("Task_LeadPursuit");
 
 	Factory.registerNodeType<Action::SetBFMMode_DBFM>("SetBFMMode_DBFM");
@@ -216,10 +225,9 @@ StickValue UCPPBehaviorTree::Step(PlaneInfo MyInfo, int NumofOtherPlane, PlaneIn
 		StickValue R;
 
 		//블랙보드에 입력된 정보를 바탕으로 비헤비어트리 Run
+		//(예전에는 여기서 Throttle = 1.0 으로 덮어써서 BT가 정한 값이 버려졌다.
+		// 지금은 RunCPPBT가 tick 전에 기본값을 넣고, Task가 덮어쓴 값을 그대로 내보낸다.)
 		RunCPPBT(VP, Throttle, AimmingMode);
-
-		//임시 코드
-		Throttle = 1.0;
 
 
 		R = Controller.GetStick(
@@ -244,13 +252,21 @@ Vector3 UCPPBehaviorTree::GetVP()
 
  void UCPPBehaviorTree::RunCPPBT(Vector3& VP, float& Throttle, bool& AimmingMode)
 {
-	
+
 	BB->RunningTime += BB->DeltaSecond;	//시뮬레이선 타임에 따른 델타 타임 설정
+
+	/*
+	tick 전에 기본 쓰로틀을 넣어 둔다.
+	대부분의 Task는 BB->Throttle을 건드리지 않으므로, 기본값이 없으면 블랙보드 초기값 0이
+	그대로 나가 추력이 사라진다. Task가 값을 정하면 그 값이 그대로 살아남는다.
+	*/
+	BB->Throttle = DEFAULT_THROTTLE;
+
 	tree.tickRoot(); //트리 작동
-	
+
 	VP = Vector3(BB->VP_Cartesian.X, BB->VP_Cartesian.Y, BB->VP_Cartesian.Z);
-	
-	Throttle = BB->Throttle;	// 쓰로틀 값
+
+	Throttle = BB->Throttle;	// 쓰로틀 값 (Task가 정했으면 그 값, 아니면 DEFAULT_THROTTLE)
 }
 
  void UCPPBehaviorTree::SetDeltaTime(double DT)

@@ -1,39 +1,121 @@
 #include "Task_TwoCircleAttack.h"
-#include <iostream>
 #include <algorithm>
+#include <cmath>
 
-using namespace Action;
+namespace Action {
 
 static inline float clampf(float v, float lo, float hi) { return std::max(lo, std::min(hi, v)); }
 
-BT::NodeStatus Task_TwoCircleAttack::tick()
+void Task_TwoCircleAttack::ResetInternalState()
+{
+    entry_time_sec_ = 0.0;
+    settle_since_sec_ = -1.0;
+    vp_saved_ = false;
+}
+
+BT::NodeStatus Task_TwoCircleAttack::onStart()
 {
     auto bb_res = getInput<CPPBlackBoard*>("BB");
-    if (!bb_res)
+    if (!bb_res || !bb_res.value())
     {
         std::cerr << "[Task_TwoCircleAttack] BB nullptr\n";
+        ResetInternalState();
         return BT::NodeStatus::FAILURE;
     }
     CPPBlackBoard* BB = bb_res.value();
 
-    // Á¶°Ç: ³»°¡ ´õ ´À¸²(¿­¼¼) ¡æ Two-Circle
-    const float myV = BB->MySpeed_MS;
-    const float tgV = BB->TargetSpeed_MS;
-    if (!(myV < tgV)) {
-        return BT::NodeStatus::FAILURE;  // ¿øº» µ¿ÀÏ µ¿ÀÛ À¯Áö :contentReference[oaicite:14]{index=14}
+    ResetInternalState();
+
+    if (BB->HABFM_CircleMode != TWO_CIRCLE)
+    {
+        std::cout << "[Task_TwoCircleAttack] skip | CircleMode="
+            << (BB->HABFM_CircleMode == ONE_CIRCLE ? "1C" : "NONE") << "\n";
+        return BT::NodeStatus::FAILURE;
     }
 
+    entry_time_sec_ = BB->RunningTime;
+    vp_on_entry_ = BB->VP_Cartesian;
+    vp_saved_ = true;
+
+    return Advance(BB);
+}
+
+BT::NodeStatus Task_TwoCircleAttack::onRunning()
+{
+    auto bb_res = getInput<CPPBlackBoard*>("BB");
+    if (!bb_res || !bb_res.value())
+    {
+        std::cerr << "[Task_TwoCircleAttack] BB nullptr\n";
+        ResetInternalState();
+        return BT::NodeStatus::FAILURE;
+    }
+
+    return Advance(bb_res.value());
+}
+
+BT::NodeStatus Task_TwoCircleAttack::Advance(CPPBlackBoard* BB)
+{
+    const double elapsed = BB->RunningTime - entry_time_sec_;
+
+    if (BB->HABFM_CircleMode != TWO_CIRCLE)
+    {
+        if (vp_saved_) { BB->VP_Cartesian = vp_on_entry_; }
+        std::cout << "[Task_TwoCircleAttack] abort | CircleMode changed, t=" << elapsed << "\n";
+        ResetInternalState();
+        return BT::NodeStatus::FAILURE;
+    }
+
+    const float myV = BB->MySpeed_MS;
+    const float tgV = BB->TargetSpeed_MS;
     const float D = BB->Distance;
-    const float dv = tgV - myV;                 // >0 (¿­¼¼)
-    // [°³¼±] ¹Ù±ù ¿ø: ¿ìÃø(+) ¹Ù±ùÀ¸·Î Å©°Ô ¹ú¸®¸ç, °Å¸®/¼ÓµµÂ÷ ±â¹Ý °¡º¯
-    float side_out = clampf(350.0f + 0.4f * D + 10.0f * dv, 400.0f, 900.0f); // ¹Ù±ù(Å©°Ô)
-    float forward = clampf(80.0f + 0.15f * D, 100.0f, 350.0f);            // ¾à°£ ÀüÁø
+    const float dv = tgV - myV;
+
+    // [ì„¤ê³„] ë°”ê¹¥ ë¡¤: ì ê¸° ìš°ì¸¡(+) ë°”ê¹¥ìœ¼ë¡œ í¬ê²Œ ëŒì•„ ë‚˜ê°€ë©°, ê±°ë¦¬/ì†ë„ì°¨ì— ë¹„ë¡€í•´ ë„“ížŒë‹¤.
+    const float side_out = clampf(350.0f + 0.4f * D + 10.0f * dv, 400.0f, 900.0f);
+    const float forward = clampf(80.0f + 0.15f * D, 100.0f, 350.0f);
 
     BB->VP_Cartesian = BB->TargetLocaion_Cartesian
         + BB->TargetRightVector * side_out
-        + BB->TargetForwardVector * (forward);
+        + BB->TargetForwardVector * forward;
+
+    const float aa = std::fabs(BB->MyAspectAngle_Degree);
+
+    if (aa <= EXIT_AA_DEG)
+    {
+        if (settle_since_sec_ < 0.0) { settle_since_sec_ = BB->RunningTime; }
+
+        if (BB->RunningTime - settle_since_sec_ >= SETTLE_DWELL_SEC)
+        {
+            std::cout << "[Task_TwoCircleAttack] resolved | AA=" << aa
+                << ", t=" << elapsed << "\n";
+            ResetInternalState();
+            return BT::NodeStatus::SUCCESS;
+        }
+    }
+    else
+    {
+        settle_since_sec_ = -1.0;
+    }
 
     std::cout << "[Task_TwoCircleAttack] Two-Circle | dv=" << dv << ", D=" << D
-        << " | side_out=" << side_out << ", fwd=" << forward << "\n";
-    return BT::NodeStatus::SUCCESS;
+        << " | side_out=" << side_out << ", fwd=" << forward
+        << ", AA=" << aa << ", t=" << elapsed << "\n";
+    return BT::NodeStatus::RUNNING;
 }
+
+void Task_TwoCircleAttack::onHalted()
+{
+    auto bb_res = getInput<CPPBlackBoard*>("BB");
+
+    if (bb_res && bb_res.value() && vp_saved_)
+    {
+        CPPBlackBoard* BB = bb_res.value();
+        BB->VP_Cartesian = vp_on_entry_;
+        std::cout << "[Task_TwoCircleAttack] halted | t="
+            << (BB->RunningTime - entry_time_sec_) << "\n";
+    }
+
+    ResetInternalState();
+}
+
+} // namespace Action

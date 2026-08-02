@@ -37,6 +37,19 @@ enum S_BFM_Mode
 	S_Others
 };
 
+/*
+HABFM 교전에서 1-circle / 2-circle 중 무엇을 할지.
+SetBFMMode_HABFM이 양측 선회율을 비교해 결정하고,
+Task_OneCircleAttack / Task_TwoCircleAttack이 이 값을 읽어 자기 차례인지 판단한다.
+CIRCLE_NONE = 아직 판단 불가(선회율 표본 부족) -> 두 Task 모두 양보한다.
+*/
+enum HABFM_Circle
+{
+	CIRCLE_NONE,
+	ONE_CIRCLE,
+	TWO_CIRCLE
+};
+
 enum WeaponMode
 {
 	Gun,
@@ -137,6 +150,8 @@ public:
 
 	BFM_Mode BFM;											//현재 BFM (OBFM, HABFM, DBFM, DETECTING, SCISSORS, NONE)
 	ACM_Mode ACM;											//현재 ACM (EF, SF)
+
+	HABFM_Circle HABFM_CircleMode;							//SetBFMMode_HABFM이 선회율로 결정한 1C/2C
 
 
 	TeamColor Team;											//팀 컬러 (BLUE, RED, UNKNOWN)

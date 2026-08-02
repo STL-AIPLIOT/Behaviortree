@@ -51,12 +51,19 @@
                     <Fallback name="HABFM_Action">
                         <!-- 선회 무한 루프 방지: 5초 내 미완료 시 자식을 halt하고 FAILURE 반환 -->
                         <!-- Timeout에는 name 속성을 붙이지 말 것 (xml_parsing.cpp가 부모 name()으로 자식을 연결) -->
+                        <!-- 두 Task는 StatefulActionNode다. SyncActionNode면 RUNNING을 반환하지 않아 -->
+                        <!-- Timeout이 개입할 틈이 없다 (decorators/timeout_node.cpp:74). -->
+                        <!-- 1C/2C 선택은 SetBFMMode_HABFM이 정한 BB->HABFM_CircleMode를 따른다. -->
                         <Timeout msec="5000">
                             <Task_OneCircleAttack BB="{BB}"/>
                         </Timeout>
                         <Timeout msec="5000">
                             <Task_TwoCircleAttack BB="{BB}"/>
                         </Timeout>
+                        <!-- 1C/2C가 모두 실패(CircleMode 미정 포함)해도 HABFM이 무행동이 되지 -->
+                        <!-- 않도록 하는 reposition. 이게 없으면 HABFM_Branch 전체가 실패해 -->
+                        <!-- OBFM으로 새어나간다. -->
+                        <Task_MinimizeAngleOff BB="{BB}"/>
                     </Fallback>
                 </Sequence>
 
@@ -65,7 +72,11 @@
                     <SetBFMMode_OBFM BB="{BB}"/>
 
                     <Fallback name="OBFM_Action">
+                        <!-- 오버슛 위험이 없으면 FAILURE로 양보한다. 예전에는 항상 SUCCESS라 -->
+                        <!-- 아래 자식들이 한 번도 실행되지 않았다. -->
                         <Task_AntiOvershoot BB="{BB}"/>
+                        <!-- 코너 속도 밴드 + lead 창 + 오버슛 위험 없음, 3조건 동시 충족일 때만 진입 -->
+                        <Task_CornerLeadPursuit BB="{BB}"/>
                         <!-- 추종이 3500ms 안에 끝나지 않으면 자식을 halt하고 FAILURE를 반환해 -->
                         <!-- Fallback이 다음 자식(Task_FollowTarget)으로 넘어가게 한다. -->
                         <!-- Timeout에는 name 속성을 붙이지 말 것 (xml_parsing.cpp:599가 부모 name()으로 자식을 연결) -->

@@ -35,6 +35,7 @@ CPPBlackBoard::CPPBlackBoard()
 
 	BFM = NONE;
 	ACM = EF;
+	HABFM_CircleMode = CIRCLE_NONE;
 	
 	Team = UNKNOWN;
 
@@ -42,7 +43,7 @@ CPPBlackBoard::CPPBlackBoard()
 
 	PredictedTargetVelocity = Vector3(0, 0, 0);
 
-	IsCounterAttack = false; // DBFM ¹Ý°Ý
+	IsCounterAttack = false; // DBFM ï¿½Ý°ï¿½
 
 }
 

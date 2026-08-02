@@ -1,41 +1,128 @@
 #include "Task_OneCircleAttack.h"
-#include <iostream>
 #include <algorithm>
+#include <cmath>
 
-using namespace Action;
+// ë©¤ë²„ ì •ì˜ëŠ” í´ë˜ìŠ¤ë¥¼ ê°ì‹¼ namespace ì•ˆì— ë‘”ë‹¤.
+// `using namespace Action;` + ì „ì—­ ë²”ìœ„ ì •ì˜ëŠ” MSVCê°€ ë°›ì•„ì£¼ê¸°ëŠ” í•˜ì§€ë§Œ í‘œì¤€ìƒ ë¶€ì í•©í•˜ë‹¤.
+namespace Action {
 
 static inline float clampf(float v, float lo, float hi) { return std::max(lo, std::min(hi, v)); }
 
-BT::NodeStatus Task_OneCircleAttack::tick()
+void Task_OneCircleAttack::ResetInternalState()
+{
+    entry_time_sec_ = 0.0;
+    settle_since_sec_ = -1.0;
+    vp_saved_ = false;
+}
+
+BT::NodeStatus Task_OneCircleAttack::onStart()
 {
     auto bb_res = getInput<CPPBlackBoard*>("BB");
-    if (!bb_res)
+    if (!bb_res || !bb_res.value())
     {
         std::cerr << "[Task_OneCircleAttack] BB nullptr\n";
+        ResetInternalState();
         return BT::NodeStatus::FAILURE;
     }
     CPPBlackBoard* BB = bb_res.value();
 
-    // Á¶°Ç: ³»°¡ ´õ ºü¸§(¿ì¼¼) ¡æ One-Circle
-    const float myV = BB->MySpeed_MS;
-    const float tgV = BB->TargetSpeed_MS;
-    if (!(myV > tgV)) {
-        // ¿øº»µµ Á¶°Ç ºÒ¸¸Á· ½Ã FAIL. (Fallback¿¡¼­ TwoCircle·Î ÀÌµ¿)
-        return BT::NodeStatus::FAILURE;  // ¿øº» µ¿ÀÏ µ¿ÀÛ À¯Áö :contentReference[oaicite:11]{index=11}
+    // Timeout halt ì´í›„ ì¬ì§„ì…í•  ë•Œ ì´ì „ ìƒíƒœê°€ ì´ì–´ì§€ì§€ ì•Šë„ë¡ í•­ìƒ ì´ˆê¸°í™”í•œë‹¤.
+    ResetInternalState();
+
+    if (BB->HABFM_CircleMode != ONE_CIRCLE)
+    {
+        // 1-circle ì°¨ë¡€ê°€ ì•„ë‹ˆë‹¤. 2-circle ë˜ëŠ” reposition ì—ê²Œ ë„˜ê¸´ë‹¤.
+        std::cout << "[Task_OneCircleAttack] skip | CircleMode="
+            << (BB->HABFM_CircleMode == TWO_CIRCLE ? "2C" : "NONE") << "\n";
+        return BT::NodeStatus::FAILURE;
     }
 
-    const float D = BB->Distance;
-    const float dv = myV - tgV;                // >0 (¿ì¼¼)
-    // [°³¼±] ÀÎ»çÀÌµå ÄÆ: ¿ìÃø(-) ³»ÃøÀ¸·Î ÆÄ°íµéµÇ, °Å¸®/¼ÓµµÂ÷ ±â¹İ °¡º¯
-    float side_in = clampf(200.0f + 0.3f * D + 8.0f * dv, 250.0f, 650.0f); // ³»Ãø(ÀÛ°Ô)
-    float forward = clampf(100.0f + 0.2f * D, 120.0f, 400.0f);           // ¼ÒÆø ÀüÁø
+    entry_time_sec_ = BB->RunningTime;
+    vp_on_entry_ = BB->VP_Cartesian;
+    vp_saved_ = true;
 
-    // ¿ìÃø ³»Ãø(À½¼ö)À¸·Î ÆÄ°íµé¸ç ¾à°£ ÀüÁøÇØ Áø·Î ¼±Á¡
+    return Advance(BB);
+}
+
+BT::NodeStatus Task_OneCircleAttack::onRunning()
+{
+    auto bb_res = getInput<CPPBlackBoard*>("BB");
+    if (!bb_res || !bb_res.value())
+    {
+        std::cerr << "[Task_OneCircleAttack] BB nullptr\n";
+        ResetInternalState();
+        return BT::NodeStatus::FAILURE;
+    }
+
+    return Advance(bb_res.value());
+}
+
+BT::NodeStatus Task_OneCircleAttack::Advance(CPPBlackBoard* BB)
+{
+    const double elapsed = BB->RunningTime - entry_time_sec_;
+
+    // ê¸°ë™ ë„ì¤‘ ì„ íšŒìœ¨ íŒì •ì´ ë’¤ì§‘íˆë©´ ì¦‰ì‹œ ì–‘ë³´í•œë‹¤.
+    if (BB->HABFM_CircleMode != ONE_CIRCLE)
+    {
+        if (vp_saved_) { BB->VP_Cartesian = vp_on_entry_; }
+        std::cout << "[Task_OneCircleAttack] abort | CircleMode changed, t=" << elapsed << "\n";
+        ResetInternalState();
+        return BT::NodeStatus::FAILURE;
+    }
+
+    const float myV = BB->MySpeed_MS;
+    const float tgV = BB->TargetSpeed_MS;
+    const float D = BB->Distance;
+    const float dv = myV - tgV;
+
+    // [ì„¤ê³„] ì¸ì‚¬ì´ë“œ ë¡¤: ì ê¸° ì¢Œì¸¡(-) ë°©í–¥ìœ¼ë¡œ íŒŒê³ ë“¤ë˜, ê±°ë¦¬/ì†ë„ì°¨ì— ë¹„ë¡€í•´ ë„“íŒë‹¤.
+    const float side_in = clampf(200.0f + 0.3f * D + 8.0f * dv, 250.0f, 650.0f);
+    const float forward = clampf(100.0f + 0.2f * D, 120.0f, 400.0f);
+
     BB->VP_Cartesian = BB->TargetLocaion_Cartesian
         - BB->TargetRightVector * side_in
-        + BB->TargetForwardVector * (forward);
+        + BB->TargetForwardVector * forward;
+
+    // ë¨¸ì§€ í•´ì†Œ íŒì •. í•œ tick ìŠ¤ì³ ì§€ë‚˜ê°€ëŠ” ê°’ìœ¼ë¡œ SUCCESS ê°€ ë‚˜ì§€ ì•Šë„ë¡ ìœ ì§€ ì‹œê°„ì„ ë³¸ë‹¤.
+    const float aa = std::fabs(BB->MyAspectAngle_Degree);
+
+    if (aa <= EXIT_AA_DEG)
+    {
+        if (settle_since_sec_ < 0.0) { settle_since_sec_ = BB->RunningTime; }
+
+        if (BB->RunningTime - settle_since_sec_ >= SETTLE_DWELL_SEC)
+        {
+            std::cout << "[Task_OneCircleAttack] resolved | AA=" << aa
+                << ", t=" << elapsed << "\n";
+            ResetInternalState();
+            return BT::NodeStatus::SUCCESS;
+        }
+    }
+    else
+    {
+        settle_since_sec_ = -1.0;
+    }
 
     std::cout << "[Task_OneCircleAttack] One-Circle | dv=" << dv << ", D=" << D
-        << " | side_in=" << side_in << ", fwd=" << forward << "\n";
-    return BT::NodeStatus::SUCCESS;
+        << " | side_in=" << side_in << ", fwd=" << forward
+        << ", AA=" << aa << ", t=" << elapsed << "\n";
+    return BT::NodeStatus::RUNNING;
 }
+
+void Task_OneCircleAttack::onHalted()
+{
+    // Timeout(Rule.xml HABFM_Action) ë§Œë£Œ ì‹œ íƒ€ì´ë¨¸ ìŠ¤ë ˆë“œì—ì„œ haltChild() ë¡œ ë“¤ì–´ì˜¨ë‹¤.
+    auto bb_res = getInput<CPPBlackBoard*>("BB");
+
+    if (bb_res && bb_res.value() && vp_saved_)
+    {
+        CPPBlackBoard* BB = bb_res.value();
+        BB->VP_Cartesian = vp_on_entry_;
+        std::cout << "[Task_OneCircleAttack] halted | t="
+            << (BB->RunningTime - entry_time_sec_) << "\n";
+    }
+
+    ResetInternalState();
+}
+
+} // namespace Action
