@@ -1,4 +1,4 @@
-#include "PredictManeuverCsvLogger.h"
+﻿#include "PredictManeuverCsvLogger.h"
 
 #include <cstdlib>
 #include <iostream>
@@ -101,8 +101,9 @@ namespace Action
 		// float/double 값을 문자열로 왕복해도 값이 보존되도록 자리수를 지정한다.
 		out.precision(std::numeric_limits<double>::max_digits10);
 
-		out << "runType,frame,time,prevAngle,currAngle,rawDelta,"
-			<< "normalizedDelta,avgDelta,bfmMode,scissorsEntered\n";
+		out << "runType,episode,frame,time,prevAngle,currAngle,rawDelta,"
+			<< "normalizedDelta,avgDelta,predictedTurn,bfmMode,scissorsEntered,"
+			<< "distance_m,ownAta_deg,targetAa_deg,angleOff_deg,enemyInSight\n";
 
 		enabled = true;
 	}
@@ -112,27 +113,30 @@ namespace Action
 		Close();
 	}
 
-	void PredictManeuverCsvLogger::StageFrame(
-		double time,
-		float prevAngle,
-		float currAngle,
-		float rawDelta,
-		float normalizedDelta,
-		float avgDelta)
+	void PredictManeuverCsvLogger::StageFrame(const PredictManeuverFrame& frame)
 	{
 		if (!enabled)
 		{
 			return;
 		}
 
+		/*
+		BT 쪽에는 경기 ID가 없다. RunningTime 은 경기마다 0부터 다시 시작하므로
+		시간이 뒤로 가면 새 경기로 본다(tools/extract_bfm_log.py 와 같은 규칙).
+		부동소수 잡음으로 오탐하지 않도록 여유를 둔다.
+		*/
+		if (hasPrevTime && frame.time < prevTime - 1e-6)
+		{
+			++episodeCounter;
+		}
+
+		hasPrevTime = true;
+		prevTime = frame.time;
+
 		hasPending = true;
 		pendingFrame = frameCounter++;
-		pendingTime = time;
-		pendingPrevAngle = prevAngle;
-		pendingCurrAngle = currAngle;
-		pendingRawDelta = rawDelta;
-		pendingNormalizedDelta = normalizedDelta;
-		pendingAvgDelta = avgDelta;
+		pendingEpisode = episodeCounter;
+		pending = frame;
 	}
 
 	void PredictManeuverCsvLogger::FlushPending(BFM_Mode currentMode)
@@ -147,15 +151,22 @@ namespace Action
 			(hasPrevMode && prevMode != SCISSORS && currentMode == SCISSORS) ? 1 : 0;
 
 		out << runType << ','
+			<< pendingEpisode << ','
 			<< pendingFrame << ','
-			<< pendingTime << ','
-			<< pendingPrevAngle << ','
-			<< pendingCurrAngle << ','
-			<< pendingRawDelta << ','
-			<< pendingNormalizedDelta << ','
-			<< pendingAvgDelta << ','
+			<< pending.time << ','
+			<< pending.prevAngle << ','
+			<< pending.currAngle << ','
+			<< pending.rawDelta << ','
+			<< pending.normalizedDelta << ','
+			<< pending.avgDelta << ','
+			<< pending.predictedTurn << ','
 			<< BfmModeToString(currentMode) << ','
-			<< scissorsEntered << '\n';
+			<< scissorsEntered << ','
+			<< pending.distanceM << ','
+			<< pending.ownAtaDeg << ','
+			<< pending.targetAaDeg << ','
+			<< pending.angleOffDeg << ','
+			<< (pending.enemyInSight ? 1 : 0) << '\n';
 
 		hasPrevMode = true;
 		prevMode = currentMode;
