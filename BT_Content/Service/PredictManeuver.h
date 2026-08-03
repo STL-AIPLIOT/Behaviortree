@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 
 #include "../../behaviortree_cpp_v3/action_node.h"
 #include "../../behaviortree_cpp_v3/bt_factory.h"
@@ -6,6 +6,7 @@
 #include "../../../Geometry/EulerAngle.h"
 #include "../../../Geometry/Quaternion.h"
 #include "../Functions.h"
+#include "../AngleUtil.h"
 #include "../BlackBoard/CPPBlackBoard.h"
 
 #include <cmath>
@@ -34,24 +35,14 @@ namespace Action
 		Yaw가 +179도에서 -179도로 넘어가면 raw 차이는 -358도가 되어
 		실제 회전량(+2도)과 부호·크기가 모두 달라진다.
 		이 wrap-around를 보정해 avgDelta 급등을 막는다.
+
+		계산은 공통 유틸리티 BTAngle::WrapDeltaDeg 하나만 쓴다.
+		여기 사본을 두면 두 구현이 갈라지므로 얇은 위임만 남긴다.
+		단위·반환 범위·±180 경계 정책은 BT_Content/AngleUtil.h 참조.
 		*/
 		static float normalizeAngleDelta(float delta)
 		{
-			// 비정상 입력(NaN, inf)은 보정하지 않고 그대로 돌려준다.
-			if (!std::isfinite(delta))
-			{
-				return delta;
-			}
-
-			// 360도 주기로 접어 [-180, 180) 범위에 넣는다.
-			delta = std::fmod(delta + 180.0f, 360.0f);
-
-			if (delta < 0.0f)
-			{
-				delta += 360.0f;
-			}
-
-			return delta - 180.0f;
+			return BTAngle::WrapDeltaDeg(delta);
 		}
 
 		std::deque<Vector3> prevPositions;

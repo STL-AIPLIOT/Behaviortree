@@ -1,4 +1,4 @@
-#include "PredictManeuver.h"
+﻿#include "PredictManeuver.h"
 #include "PredictManeuverCsvLogger.h"
 #include <cmath>
 
@@ -100,8 +100,9 @@ namespace Action
 
 			// ±180도 경계를 통과할 때 발생하는
 			// -358도, +358도 등의 잘못된 차이를 보정한다.
+			// 공통 유틸리티(BT_Content/AngleUtil.h)를 통해서만 계산한다.
 			const float normalizedDelta =
-				normalizeAngleDelta(rawDelta);
+				BTAngle::SignedDeltaDeg(currentRecordedYaw, previousYaw);
 
 			sumDelta += normalizedDelta;
 
@@ -118,20 +119,8 @@ namespace Action
 		const float avgDelta =
 			sumDelta / deltaCount;
 
-		// 이번 프레임의 각도 값을 stage 한다.
-		// 실제 기록은 다음 tick에서 BFM 모드가 확정된 뒤 이루어진다.
-		if (csvLogger.IsEnabled())
-		{
-			csvLogger.StageFrame(
-				(*BB)->RunningTime,
-				lastPreviousYaw,
-				lastCurrentYaw,
-				lastRawDelta,
-				lastNormalizedDelta,
-				avgDelta);
-		}
-
 		// 기존 코드의 회전 방향 기준을 그대로 유지한다.
+		// NaN이 들어오면 두 비교가 모두 false가 되어 STRAIGHT로 남는다.
 		if (avgDelta > TURN_THRESHOLD_DEG)
 		{
 			(*BB)->PredictedTurnDirection = "LEFT";
@@ -143,6 +132,30 @@ namespace Action
 		else
 		{
 			(*BB)->PredictedTurnDirection = "STRAIGHT";
+		}
+
+		// 이번 프레임의 각도 값을 stage 한다.
+		// 실제 기록은 다음 tick에서 BFM 모드가 확정된 뒤 이루어진다.
+		// 방향 판정을 마친 뒤에 stage 해야 PredictedTurnDirection이 이번 프레임 값이 된다.
+		if (csvLogger.IsEnabled())
+		{
+			PredictManeuverFrame frame;
+			frame.time = (*BB)->RunningTime;
+			frame.prevAngle = lastPreviousYaw;
+			frame.currAngle = lastCurrentYaw;
+			frame.rawDelta = lastRawDelta;
+			frame.normalizedDelta = lastNormalizedDelta;
+			frame.avgDelta = avgDelta;
+			frame.predictedTurn = (*BB)->PredictedTurnDirection;
+			// 아래 네 값은 이 노드가 계산하지 않고 블랙보드에서 그대로 읽는다.
+			// 의미와 부호 규약은 PredictManeuverCsvLogger.h 의 컬럼 설명 참조.
+			frame.distanceM = (*BB)->Distance;
+			frame.ownAtaDeg = (*BB)->Los_Degree;
+			frame.targetAaDeg = (*BB)->MyAspectAngle_Degree;
+			frame.angleOffDeg = (*BB)->MyAngleOff_Degree;
+			frame.enemyInSight = (*BB)->EnemyInSight;
+
+			csvLogger.StageFrame(frame);
 		}
 
 		return NodeStatus::SUCCESS;
