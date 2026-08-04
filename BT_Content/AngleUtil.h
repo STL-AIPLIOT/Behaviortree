@@ -36,6 +36,33 @@ PlaneInfo::Rotation 주석 "Degree", GeoMathUtil 의 *_deg 값 모두 동일).
 (0 으로 위장하면 이상 프레임이 정상 프레임과 구분되지 않는다).
 */
 
+/*
+A/B 비교용 스위치: PM_DISABLE_WRAP_FIX
+--------------------------------------
+wrap 보정의 효과를 측정하려면 "보정이 없던 상태"의 로그가 필요하다. 그런데
+보정(normalizeAngleDelta)과 CSV 로거는 같은 커밋(0623e1b)에서 함께 들어왔다.
+그 이전 커밋(e11bf5f)은 보정이 없는 대신 로거도 없어서, 옛 커밋을 체크아웃하는
+방식으로는 'before' 로그를 만들 수 없다.
+
+그래서 **보정만 끄는 컴파일 플래그**를 둔다. 이 플래그로 빌드한 DLL 은
+e11bf5f 와 같은 계산
+
+    sumDelta += prevHeadings[i] - prevHeadings[i - 1];      // 보정 없는 단순 뺄셈
+
+을 하면서 CSV 로깅은 그대로 유지한다. 두 DLL 의 차이가 이 한 줄뿐이므로
+공정한 A/B 가 된다.
+
+    cl /DPM_DISABLE_WRAP_FIX ...
+    tools\build_bt.ps1 -DisableWrapFix     # 'before' DLL
+
+**이 플래그를 켠 빌드를 제출하거나 실제 교전에 쓰면 안 된다.** 켜면 컴파일 시
+경고가 찍히도록 해 두었다.
+*/
+#ifdef PM_DISABLE_WRAP_FIX
+#pragma message("경고: PM_DISABLE_WRAP_FIX 가 켜져 있다. 각도 wrap 보정이 꺼진 " \
+                "A/B 비교 전용 빌드다. 제출/실전에 쓰지 말 것.")
+#endif
+
 #include <cmath>
 
 namespace BTAngle
@@ -46,6 +73,11 @@ namespace BTAngle
 	*/
 	inline float WrapDeltaDeg(float delta)
 	{
+#ifdef PM_DISABLE_WRAP_FIX
+		// A/B 비교 'before' 빌드: 보정하지 않고 그대로 돌려준다.
+		// wrap 경계에서 ±358 같은 값이 그대로 avgDelta 에 들어간다.
+		return delta;
+#else
 		if (!std::isfinite(delta))
 		{
 			return delta;
@@ -60,6 +92,7 @@ namespace BTAngle
 		}
 
 		return folded - 180.0f;
+#endif
 	}
 
 	/*

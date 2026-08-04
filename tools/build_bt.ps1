@@ -34,7 +34,11 @@ param(
     [string]$Config     = "Debug",
     [string]$Platform   = "x64",
     [string]$TeamName   = "STIL",
-    [switch]$Deploy
+    [switch]$Deploy,
+    # A/B 비교용. 각도 wrap 보정만 끈 'before' DLL 을 만든다.
+    # BT_Content/AngleUtil.h 의 PM_DISABLE_WRAP_FIX 설명 참조.
+    # 이 스위치로 만든 DLL 은 제출/실전에 쓰지 말 것.
+    [switch]$DisableWrapFix
 )
 
 $ErrorActionPreference = "Stop"
@@ -55,10 +59,32 @@ if (-not $msbuild) { throw "MSBuild.exe 를 찾지 못했다. VC 워크로드가
 Write-Host "MSBuild: $msbuild"
 
 # ---- 빌드 ---------------------------------------------------------
-$log = Join-Path $PSScriptRoot "msbuild_$Config`_$Platform.log"
+$suffix = if ($DisableWrapFix) { "_nowrapfix" } else { "" }
+$log = Join-Path $PSScriptRoot "msbuild_$Config`_$Platform$suffix.log"
 Write-Host "빌드: $Config|$Platform"
-& $msbuild $sln /t:Build /p:Configuration=$Config /p:Platform=$Platform /m /nologo `
-    /v:minimal /flp:"logfile=$log;verbosity=normal" 2>&1 | Tee-Object -Variable out | Out-Host
+
+# PM_DISABLE_WRAP_FIX 는 전처리기 정의로만 넣는다. 소스를 건드리지 않으므로
+# 두 빌드의 차이가 이 매크로 하나뿐임이 보장된다.
+#
+# /p:PreprocessorDefinitions 로는 전달되지 않는다. vcxproj 에서 그 값은 property 가
+# 아니라 ClCompile 의 item metadata 라 전역 property 로 덮이지 않기 때문이다.
+# cl.exe 가 직접 읽는 CL 환경변수를 쓴다(옵션을 명령줄 앞에 붙여 준다).
+$prevCL = $env:CL
+if ($DisableWrapFix) {
+    Write-Host "  [A/B] PM_DISABLE_WRAP_FIX 켜짐 - wrap 보정이 꺼진 'before' 빌드다."
+    Write-Host "        제출/실전에 쓰지 말 것."
+    $env:CL = ("/DPM_DISABLE_WRAP_FIX " + $env:CL).Trim()
+}
+
+# 매크로가 바뀌어도 증분 빌드는 이를 감지하지 못한다. 항상 Rebuild 해야
+# 이전 빌드의 .obj 가 섞이지 않는다.
+$msbuildTarget = if ($DisableWrapFix) { "Rebuild" } else { "Build" }
+try {
+    & $msbuild $sln /t:$msbuildTarget /p:Configuration=$Config /p:Platform=$Platform /m /nologo `
+        /v:minimal /flp:"logfile=$log;verbosity=normal" 2>&1 | Tee-Object -Variable out | Out-Host
+} finally {
+    $env:CL = $prevCL
+}
 $code = $LASTEXITCODE
 
 $errors   = @($out | Select-String -Pattern ' error [A-Z]+\d+')
