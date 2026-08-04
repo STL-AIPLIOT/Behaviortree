@@ -591,14 +591,10 @@ TreeNode::Ptr XMLParser::Pimpl::createNodeFromXML(const XMLElement *element,
 		{
 			control_parent->addChild(child_node.get());
 		}
-       // if (auto decorator_parent = static_cast<DecoratorNode*>(node_parent.get()))
-		//if (auto decorator_parent = (DecoratorNode*)(node_parent.get()))
-  //      {
-  //          decorator_parent->setChild(child_node.get());
-  //      }
-		if (node_parent.get()->name() == "Decorator" || node_parent.get()->name() == "Inverter" || node_parent.get()->name() == "Repeat" || node_parent.get()->name() == "RetryUntilSuccesful"
-			|| node_parent.get()->name() == "SubTree" || node_parent.get()->name() == "Timeout"
-			|| node_parent.get()->name() == "CanRetry" || node_parent.get()->name() == "DECO_CounterAttackCheck")
+		// Decorator 는 타입으로 판정한다. 이름 목록으로 거르면 새 Decorator 를 만들 때마다
+		// 목록에 추가하는 것을 잊어 자식이 조용히 버려진다(control 쪽과 같은 결함).
+		// dynamic_cast 가 실패하면 Decorator 가 아니므로 아무 것도 하지 않는다.
+		else if (auto decorator_parent = dynamic_cast<DecoratorNode*>(node_parent.get()))
 		{
 			decorator_parent->setChild(child_node.get());
 		}

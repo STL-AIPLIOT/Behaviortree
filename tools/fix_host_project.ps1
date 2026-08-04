@@ -56,7 +56,22 @@ if ($SyncSources) {
     $btDst = Join-Path $HostRoot "BehaviorTree"
     if (-not (Test-Path $btDst)) { throw "호스트에 BehaviorTree 폴더가 없다: $btDst" }
     Write-Host "[sync] -> $btDst"
-    foreach ($item in @("BT_Content", "CPPBehaviorTree.cpp", "CPPBehaviorTree.h", "Rule.xml")) {
+    <#
+      2026-08-04: 목록이 BT_Content / CPPBehaviorTree.* / Rule.xml 뿐이라
+      저장소 루트의 라이브러리 소스(xml_parsing.cpp 등)가 빠져 있었다.
+      그 결과 xml_parsing.cpp 의 수정(자식 노드를 이름이 아니라 타입으로 연결)이
+      호스트로 가지 않아, 트리의 자식이 하나도 연결되지 않은 DLL 이 만들어졌다.
+      BT 는 매 tick SUCCESS 를 돌려주면서 아무 노드도 실행하지 않았고 에러는 없었다.
+
+      아래에 루트 소스를 추가했다. 다만 이 목록도 결국 손으로 관리하는 것이라
+      **build_bt.ps1 이 매 빌드마다 전체 트리를 해시 비교로 동기화한다.**
+      평소에는 그쪽을 쓰고, 이 스위치는 vcxproj 정리와 함께 쓸 때만 쓰라.
+    #>
+    $rootSources = Get-ChildItem -Path $TeamRepo -File |
+        Where-Object { $_.Extension -in @('.cpp', '.h') } |
+        ForEach-Object { $_.Name }
+    foreach ($item in (@("BT_Content", "behaviortree_cpp_v3", "controls", "decorators",
+                         "filesystem", "3rdparty", "Rule.xml") + $rootSources)) {
         $src = Join-Path $TeamRepo $item
         if (-not (Test-Path $src)) { Write-Host "  ! 없음, 건너뜀: $item"; continue }
         if ($Apply) { Copy-Item $src -Destination $btDst -Recurse -Force; Write-Host "  copied: $item" }
