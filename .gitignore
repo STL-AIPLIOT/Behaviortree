@@ -1,4 +1,29 @@
 AI-TopGun-Pilot.worktrees/
+
+# 테스트 빌드 산출물. tests/build_and_run_*.ps1 이 만든다.
 tests/build/
-.vs/*
+
+# 빌드 부산물이 저장소 루트로 새는 경우가 있다.
+# 예: cl.exe 에 /Fd 를 주지 않으면 vc140.pdb 가 작업 디렉터리에 떨어진다.
+*.obj
+*.pdb
+*.ilk
+*.exe
+*.lib
+*.exp
+*.idb
+*.res
+
+# 빌드 로그. tools/build_bt.ps1 이 msbuild_<Config>_<Platform>.log 를 남긴다.
 tools/*.log
+msbuild*.log
+
+# 에디터 / OS 가 만드는 파일. 저장소 내용과 무관하다.
+.vs/*
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+desktop.ini
+*.swp
+*~
