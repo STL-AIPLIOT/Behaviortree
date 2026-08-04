@@ -42,7 +42,7 @@ BT::NodeStatus SetBFMMode_DBFM::tick()
         bool geom_ok = (D >= 350.0f && D <= 1000.0f) && (AA < 60.0f);
         BB->IsCounterAttack = (energy_cmp > 0) && geom_ok;
 
-        std::cout << "[SetBFMMode_DBFM] t=" << BB->RunningTime << "s | DBFM ÀüÈ¯"
+        std::cout << "[SetBFMMode_DBFM] t=" << BB->RunningTime << "s | Enter DBFM"
             << " | D=" << D << ", LOS=" << los_deg
             << ", AA=" << AA << ", Energy=" << energy_cmp
             << " | Counter=" << (BB->IsCounterAttack ? "YES" : "NO") << "\n";
