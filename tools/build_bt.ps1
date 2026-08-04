@@ -15,8 +15,28 @@
   빌드 전에 tools\fix_host_project.ps1 을 먼저 돌려라. vcxproj 에 노드가 등록돼 있지 않으면
   **에러 없이** 그 노드가 빠진 DLL 이 나온다.
 
+  소스 동기화 (2026-08-04 추가, 기본 동작)
+  ----------------------------------------
+  vcxproj 는 팀 저장소가 아니라 <HostRoot>\BehaviorTree 를 컴파일한다. 즉 팀 트리를
+  고쳐도 그쪽으로 복사하지 않으면 **옛 소스가 그대로 빌드된다.**
+
+  실제로 이 때문에 xml_parsing.cpp 의 수정(자식 노드 연결을 이름 문자열이 아니라
+  타입으로 판정)이 반영되지 않아, Rule.xml 의 모든 제어 노드에 name 별칭이 붙어 있는 탓에
+  **트리의 자식이 하나도 연결되지 않은 DLL** 이 만들어졌다. BT 는 매 tick SUCCESS 를
+  돌려주면서 아무 노드도 실행하지 않았고(BFM=NONE 1468/1468, VP=(0,0,0)), 에러가 한 줄도
+  나지 않아 오랫동안 발견되지 않았다.
+
+  그래서 이 스크립트는 빌드 전에 팀 트리를 호스트로 동기화하고, **무엇이 낡아 있었는지
+  파일 이름까지 출력한다.** -NoSync 로 끌 수 있지만 권장하지 않는다.
+
+  주의: BT_Content 만이 아니라 저장소 루트의 xml_parsing.cpp / behavior_tree.cpp 같은
+  라이브러리 소스도 함께 봐야 한다. 예전 절차는 BT_Content 만 복사해서 이 결함을 놓쳤다.
+
 .PARAMETER HostRoot
   AIP_DCS 폴더(.sln 이 있는 곳). 환경변수 AIP_DCS_ROOT 로도 지정 가능.
+
+.PARAMETER NoSync
+  팀 트리 -> 호스트 소스 동기화를 건너뛴다. 낡은 소스가 빌드될 수 있다.
 
 .PARAMETER ReleaseDir
   DogFightEnv\Release 경로. -Deploy 일 때만 쓴다.
@@ -38,13 +58,83 @@ param(
     # A/B 비교용. 각도 wrap 보정만 끈 'before' DLL 을 만든다.
     # BT_Content/AngleUtil.h 의 PM_DISABLE_WRAP_FIX 설명 참조.
     # 이 스위치로 만든 DLL 은 제출/실전에 쓰지 말 것.
-    [switch]$DisableWrapFix
+    [switch]$DisableWrapFix,
+    # 팀 트리 -> 호스트 소스 동기화를 건너뛴다. 낡은 소스가 빌드될 수 있어 권장하지 않는다.
+    [switch]$NoSync
 )
 
 $ErrorActionPreference = "Stop"
 
 $sln = Join-Path $HostRoot "AIP_DCS.sln"
 if (-not (Test-Path $sln)) { throw ".sln 을 찾을 수 없다: $sln" }
+
+# ---- 소스 동기화 (팀 트리 -> 호스트 빌드 트리) ----------------------
+# vcxproj 가 컴파일하는 것은 <HostRoot>\BehaviorTree 다. 팀 트리를 고쳐도
+# 여기에 복사하지 않으면 옛 소스가 조용히 빌드된다(.SYNOPSIS 의 사고 사례 참조).
+$TeamRoot = (Resolve-Path (Join-Path $PSScriptRoot "..")).Path
+$HostBT   = Join-Path $HostRoot "BehaviorTree"
+
+function Sync-BehaviorTreeSources {
+    param([string]$From, [string]$To)
+
+    if (-not (Test-Path $To)) { throw "호스트 BehaviorTree 폴더가 없다: $To" }
+
+    # 빌드에 들어가지 않는 것만 제외한다. 소스/헤더는 전부 대상이다.
+    $skipDirs = @('.git', '.github', 'tools', 'tests')
+    $skipNames = @('.DS_Store', '.gitignore')
+
+    $files = Get-ChildItem -Path $From -Recurse -File | Where-Object {
+        $rel = $_.FullName.Substring($From.Length).TrimStart('\')
+        $top = ($rel -split '\\')[0]
+        ($skipDirs -notcontains $top) -and
+        ($skipNames -notcontains $_.Name) -and
+        ($_.Extension -notin @('.md'))
+    }
+
+    $copied = @()
+    foreach ($f in $files) {
+        $rel = $f.FullName.Substring($From.Length).TrimStart('\')
+        $dst = Join-Path $To $rel
+        $needCopy = $true
+        if (Test-Path $dst) {
+            # 해시 비교. 타임스탬프는 복사/체크아웃으로 쉽게 흔들려 신뢰할 수 없다.
+            $needCopy = (Get-FileHash $f.FullName -Algorithm SHA256).Hash -ne
+                        (Get-FileHash $dst      -Algorithm SHA256).Hash
+        }
+        if ($needCopy) {
+            $dstDir = Split-Path $dst -Parent
+            if (-not (Test-Path $dstDir)) { New-Item -ItemType Directory -Force -Path $dstDir | Out-Null }
+            Copy-Item $f.FullName $dst -Force
+            $copied += $rel
+        }
+    }
+    return $copied
+}
+
+if ($NoSync) {
+    Write-Host "[sync] 건너뜀 (-NoSync). 호스트의 낡은 소스가 빌드될 수 있다." -ForegroundColor Yellow
+} else {
+    Write-Host "[sync] $TeamRoot  ->  $HostBT"
+    $changed = Sync-BehaviorTreeSources -From $TeamRoot -To $HostBT
+    if ($changed.Count -eq 0) {
+        Write-Host "[sync] 이미 최신 (변경 없음)"
+    } else {
+        Write-Host "[sync] 낡아 있던 파일 $($changed.Count)개를 갱신했다:" -ForegroundColor Yellow
+        $changed | Select-Object -First 20 | ForEach-Object { Write-Host "         $_" }
+        if ($changed.Count -gt 20) { Write-Host "         ... 외 $($changed.Count - 20)개" }
+    }
+
+    # 호스트에만 있는 소스는 vcxproj 가 컴파일할 수 있으므로 알려 준다(삭제하지는 않는다).
+    $hostOnly = Get-ChildItem -Path $HostBT -Recurse -File -Include *.cpp, *.h |
+        Where-Object {
+            $rel = $_.FullName.Substring($HostBT.Length).TrimStart('\')
+            -not (Test-Path (Join-Path $TeamRoot $rel))
+        } | ForEach-Object { $_.FullName.Substring($HostBT.Length).TrimStart('\') }
+    if ($hostOnly) {
+        Write-Host "[sync] 호스트에만 있는 소스 $($hostOnly.Count)개 (팀 트리에 없음, 그대로 둔다):" -ForegroundColor Yellow
+        $hostOnly | Select-Object -First 10 | ForEach-Object { Write-Host "         $_" }
+    }
+}
 
 # ---- MSBuild 찾기 -------------------------------------------------
 $vswhere = "${env:ProgramFiles(x86)}\Microsoft Visual Studio\Installer\vswhere.exe"

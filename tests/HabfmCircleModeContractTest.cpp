@@ -1,4 +1,4 @@
-// HABFM 1C/2C 진입 계약 테스트
+﻿// HABFM 1C/2C 진입 계약 테스트
 //
 // 빌드/실행: tests/build_and_run_habfm.ps1  (MSVC / Windows)
 //

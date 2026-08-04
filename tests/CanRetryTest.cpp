@@ -1,4 +1,4 @@
-// CanRetry 데코레이터 상태 전이 테스트
+﻿// CanRetry 데코레이터 상태 전이 테스트
 //
 // 빌드/실행: tests/build_and_run.sh 참고
 //
