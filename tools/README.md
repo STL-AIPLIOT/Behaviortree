@@ -15,6 +15,51 @@ BT DLL 을 빌드해서 `DogFightEnv\Release` 에 놓기까지의 절차를 스�
 
 **새 노드를 추가했으면 반드시 `fix_host_project.ps1` 을 다시 돌려라.**
 
+## 두 번째 함정 — 호스트 소스가 낡아도 빌드는 성공한다 (2026-08-04)
+
+`vcxproj` 가 컴파일하는 것은 팀 저장소가 아니라 **`<HostRoot>\BehaviorTree`** 다.
+팀 트리를 고쳐도 그쪽으로 복사하지 않으면 **옛 소스가 조용히 빌드된다.**
+
+실제 사고: `xml_parsing.cpp` 의 수정 — 자식 노드 연결을 부모 `name()` 문자열 비교에서
+타입(`dynamic_cast<ControlNode*>`) 판정으로 바꾼 것 — 이 호스트로 가지 않았다.
+`Rule.xml` 의 제어 노드에는 전부 `name="..."` 별칭이 붙어 있어(`MainCombatSequence`,
+`SelectAndExecuteBFM`, `HABFM_Action` …) 옛 코드에서는 **자식이 단 하나도 연결되지 않았다.**
+
+증상은 이랬다.
+
+```
+[tree] MainCombatSequence [Control, children=0]     ← 노드 45개는 만들어졌지만 전부 고아
+BFM=NONE 1468/1468 tick,  VP=(0,0,0),  Distance=0
+SetBFMMode 로그 0줄,  PredictManeuver CSV 미생성
+```
+
+빌드 에러도, 런타임 에러도, 로그도 없었다. `--target-backend bt` 는 사실상
+`target_mode: fixed` 와 동일하게 동작했고 그 상태로 스파링 데이터가 쌓였다.
+
+원인은 두 겹이었다.
+
+1. `fix_host_project.ps1 -SyncSources` 의 복사 목록에 저장소 루트 소스가 없었다
+   (`BT_Content`, `CPPBehaviorTree.*`, `Rule.xml` 뿐).
+2. 팀 트리의 `xml_parsing.cpp` 자체가 컴파일되지 않았다 — `dynamic_cast` 수정을 넣으면서
+   `decorator_parent` 선언 줄이 함께 지워져 `error C2065` 가 났다.
+   그래서 호스트에는 빌드되는 옛 파일이 남아 있었다.
+
+**대응: `build_bt.ps1` 이 매 빌드마다 팀 트리 전체를 해시 비교로 동기화한다.**
+낡아 있던 파일은 이름까지 출력한다.
+
+```
+[sync] ...\Behaviortree  ->  C:\AIP_LIB\AIP_DCS\BehaviorTree
+[sync] 낡아 있던 파일 1개를 갱신했다:
+         xml_parsing.cpp
+[sync] 호스트에만 있는 소스 2개 (팀 트리에 없음, 그대로 둔다):
+         BT_Content\Task\Task_Empty.cpp
+```
+
+`-NoSync` 로 끌 수 있지만 쓰지 마라. 호스트에만 있는 소스는 vcxproj 가 컴파일할 수 있으므로
+삭제하지 않고 목록만 보여준다 — 필요 없는 파일이면 vcxproj 에서 빼라.
+
+> BT 를 고쳤는데 동작이 안 바뀌면, 먼저 `[sync]` 출력을 보라.
+
 ## 사용
 
 ```powershell
@@ -45,6 +90,15 @@ vcxproj 를 최초 1회 `.bak` 으로 백업한다.
 - **`init()` 이 `createTreeFromFile("./Rule.xml")` 로 파일명을 하드코딩**한다. 따라서 Release 루트에
   `Rule.xml` 은 하나만 둘 수 있고, 제출용으로 `Rule_<team>.xml` 로 바꾸려면 그 문자열도 함께 고쳐야 한다.
   DLL 과 XML 은 항상 한 세트로 옮긴다.
+- **그 결과 벤더 `AIP_BASE_target.dll` 은 팀 `Rule.xml` 이 깔린 상태에서 못 쓴다** (2026-08-04 실측).
+  두 DLL 이 같은 `./Rule.xml` 을 읽는데 팀 XML(98요소)에는 벤더 빌드가 등록하지 않은 노드가 들어 있어,
+  `CreateBehaviorTree` 가 C++ 예외를 던지고 ctypes 경계를 넘어 `OSError: [WinError -529697949]`
+  (`0xe06d7363`) 로 올라온다. **DLL 이나 경로 문제로 보이지만 원인은 XML 이다.**
+  - 증상 위치: `native_bt.py:125` → `FighterSim.py:339` → `single_agent_env.py:165`
+  - BT 상대 학습(`target_mode: behavior_tree`)은 `target_behavior_dll: AIP_STIL.dll` 로 돌린다.
+  - 벤더 원본 `Rule.xml`(1104 B, 2026-05-20)은 `C:\AIP_LIB\Rule.xml` 에 남아 있다.
+    벤더 상대가 필요하면 루트 XML 을 그것으로 되돌려야 하고, 그동안 팀 DLL 은 쓸 수 없다.
+    **둘을 동시에 쓸 방법은 파일명 하드코딩을 고치지 않는 한 없다.**
 - `/sdl` 이 C4996 을 error 로 올려서 `getenv` 를 쓰는 `PredictManeuverCsvLogger.cpp` /
   `LeadPursuitTelemetry.cpp` 가 빌드를 깬다. 스크립트가 `_CRT_SECURE_NO_WARNINGS` 를 넣어 해결한다.
 

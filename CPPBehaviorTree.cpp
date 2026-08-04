@@ -3,6 +3,11 @@
 
 #include "CPPBehaviorTree.h"
 
+#include <cstdlib>
+#include <fstream>
+#include <functional>
+#include <string>
+
 
 /*
 Task가 쓰로틀을 정하지 않았을 때 쓰는 기본값.
@@ -10,6 +15,61 @@ Task가 쓰로틀을 정하지 않았을 때 쓰는 기본값.
 에너지 관리를 실험할 때 여기부터 낮춰 본다.
 */
 static constexpr float DEFAULT_THROTTLE = 1.0f;
+
+
+/*
+BT 진단 로그 (환경변수 BT_DIAG_LOG 가 있을 때만 동작)
+-----------------------------------------------------
+BT 노드가 std::cout 으로 찍는 진단은 Python(ctypes)으로 DLL 을 구동할 때
+호출부의 stdout 리다이렉트로 수집되지 않는다(2026-08-04 실측: 3000 tick 에도 0줄,
+SetStdHandle 로 핸들을 바꿔도 0바이트). 그래서 tick 이 실제로 도는지조차 확인할 수
+없었다. 이 로거는 stdout 을 거치지 않고 파일에 직접 쓴다.
+
+    BT_DIAG_LOG=logs/bt_diag.txt   # 지정하지 않으면 완전히 비활성
+*/
+namespace
+{
+	std::ofstream& BtDiagStream()
+	{
+		static std::ofstream stream = [] {
+			std::ofstream out;
+			const char* path = std::getenv("BT_DIAG_LOG");
+			if (path && *path)
+			{
+				out.open(path, std::ios::out | std::ios::trunc);
+			}
+			return out;
+		}();
+		return stream;
+	}
+
+	bool BtDiagEnabled()
+	{
+		return BtDiagStream().is_open();
+	}
+
+	void BtDiag(const std::string& line)
+	{
+		if (!BtDiagEnabled())
+		{
+			return;
+		}
+		BtDiagStream() << line << "\n";
+		BtDiagStream().flush();   // 크래시로 잃지 않도록 매번 flush
+	}
+
+	const char* StatusName(BT::NodeStatus s)
+	{
+		switch (s)
+		{
+		case BT::NodeStatus::IDLE:    return "IDLE";
+		case BT::NodeStatus::RUNNING: return "RUNNING";
+		case BT::NodeStatus::SUCCESS: return "SUCCESS";
+		case BT::NodeStatus::FAILURE: return "FAILURE";
+		}
+		return "?";
+	}
+}
 
 
 Vector3 UCPPBehaviorTree::LLAtoCartesian(Vector3 LLA, Vector3 BaseLLA)
@@ -116,6 +176,47 @@ void UCPPBehaviorTree::init()
 	//파일로 트리 구조 정의
 	//파일 이름은 본인의 팀이름으로 해주세요!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 	tree = Factory.createTreeFromFile("./Rule.xml");
+
+	// 트리가 실제로 만들어졌는지 (노드 개수 포함) 파일로 남긴다.
+	if (BtDiagEnabled())
+	{
+		BtDiag("[init] createTreeFromFile OK, nodes=" +
+			std::to_string(tree.nodes.size()) +
+			", root=" + (tree.rootNode() ? tree.rootNode()->name() : std::string("(null)")));
+
+		// 어떤 노드가 실제로 파싱됐는지 전부 남긴다.
+		for (const auto& node : tree.nodes)
+		{
+			BtDiag(std::string("[init]   node: ") + node->name() +
+				"  (type=" + node->registrationName() + ")");
+		}
+
+		// 실제 부모-자식 계층. tree.nodes 는 평면 목록이라 연결 상태를 보여주지 않는다.
+		// 이 벤더 파서는 자식을 노드 '이름 문자열'로 연결하도록 개조돼 있어
+		// (xml_parsing.cpp:599-604) 계층이 어긋날 수 있다.
+		std::function<void(BT::TreeNode*, int)> dump = [&](BT::TreeNode* n, int depth)
+		{
+			if (!n) { return; }
+			std::string pad(static_cast<size_t>(depth) * 2, ' ');
+			if (auto* ctrl = dynamic_cast<BT::ControlNode*>(n))
+			{
+				BtDiag("[tree] " + pad + n->name() + " [Control, children=" +
+					std::to_string(ctrl->children().size()) + "]");
+				for (auto* c : ctrl->children()) { dump(c, depth + 1); }
+			}
+			else if (auto* deco = dynamic_cast<BT::DecoratorNode*>(n))
+			{
+				BtDiag("[tree] " + pad + n->name() + " [Decorator, child=" +
+					(deco->child() ? deco->child()->name() : std::string("(null)")) + "]");
+				dump(deco->child(), depth + 1);
+			}
+			else
+			{
+				BtDiag("[tree] " + pad + n->name() + " [Leaf]");
+			}
+		};
+		dump(tree.rootNode(), 0);
+	}
 	
 	//문자열로 트리 구조 정의
 	//std::string XML = StrCat(xml_text1, xml_text2);
@@ -227,6 +328,45 @@ StickValue UCPPBehaviorTree::Step(PlaneInfo MyInfo, int NumofOtherPlane, PlaneIn
 		//블랙보드에 입력된 정보를 바탕으로 비헤비어트리 Run
 		//(예전에는 여기서 Throttle = 1.0 으로 덮어써서 BT가 정한 값이 버려졌다.
 		// 지금은 RunCPPBT가 tick 전에 기본값을 넣고, Task가 덮어쓴 값을 그대로 내보낸다.)
+		if (BtDiagEnabled())
+		{
+			std::string m = "[preTick] NumOther=" + std::to_string(NumofOtherPlane) +
+				" EnemySize=" + std::to_string(BB->Enemy.size()) +
+				" myLLA=(" + std::to_string(MyInfo.Location.X) + "," +
+				std::to_string(MyInfo.Location.Y) + "," + std::to_string(MyInfo.Location.Z) + ")";
+			if (NumofOtherPlane > 0)
+			{
+				m += " othLLA=(" + std::to_string(OthersInfo[0].Location.X) + "," +
+					std::to_string(OthersInfo[0].Location.Y) + "," +
+					std::to_string(OthersInfo[0].Location.Z) + ")" +
+					" othCart=(" + std::to_string(others[0].Location.X) + "," +
+					std::to_string(others[0].Location.Y) + "," +
+					std::to_string(others[0].Location.Z) + ")";
+			}
+			if (!BB->Enemy.empty())
+			{
+				m += " Enemy0=(" + std::to_string(BB->Enemy[0].Location.X) + "," +
+					std::to_string(BB->Enemy[0].Location.Y) + "," +
+					std::to_string(BB->Enemy[0].Location.Z) + ")";
+			}
+			// 트리 노드가 실제로 받는 BB 와 이 객체의 BB 가 같은지 대조한다.
+			{
+				CPPBlackBoard* fromTree = nullptr;
+				try { fromTree = tree.rootBlackboard()->get<CPPBlackBoard*>("BB"); }
+				catch (...) { fromTree = reinterpret_cast<CPPBlackBoard*>(-1); }
+				char buf[64];
+				snprintf(buf, sizeof(buf), " thisBB=%p treeBB=%p",
+					static_cast<void*>(BB), static_cast<void*>(fromTree));
+				m += buf;
+				m += (fromTree == BB) ? " SAME" : " *** DIFFERENT ***";
+				if (fromTree && fromTree != reinterpret_cast<CPPBlackBoard*>(-1))
+				{
+					m += " treeBB.EnemySize=" + std::to_string(fromTree->Enemy.size());
+				}
+			}
+			BtDiag(m);
+		}
+
 		RunCPPBT(VP, Throttle, AimmingMode);
 
 
@@ -262,7 +402,51 @@ Vector3 UCPPBehaviorTree::GetVP()
 	*/
 	BB->Throttle = DEFAULT_THROTTLE;
 
-	tree.tickRoot(); //트리 작동
+	/*
+	[C-2 실험] tick 전에 트리 상태를 리셋한다.
+	루트 Sequence 가 이전 tick 의 상태에 고착돼 자식을 돌지 않는다는 가설을 검증한다.
+	BT_FORCE_HALT 를 설정했을 때만 동작한다(기본 동작 불변).
+	*/
+	{
+		static const bool forceHalt = [] {
+			const char* v = std::getenv("BT_FORCE_HALT");
+			return v && *v && std::string(v) != "0";
+		}();
+		if (forceHalt && tree.rootNode())
+		{
+			tree.rootNode()->halt();
+		}
+	}
+
+	const BT::NodeStatus rootStatus = tree.tickRoot(); //트리 작동
+
+	if (BtDiagEnabled())
+	{
+		static long long diagTick = 0;
+		BtDiag("[tick " + std::to_string(diagTick++) +
+			"] t=" + std::to_string(BB->RunningTime) +
+			" root=" + StatusName(rootStatus) +
+			" BFM=" + std::to_string(static_cast<int>(BB->BFM)) +
+			" enemies=" + std::to_string(BB->Enemy.size()) +
+			// BFM 게이트가 읽는 값들. 어느 조건에서 막히는지 보려면 이게 필요하다.
+			" sight=" + std::to_string(BB->EnemyInSight ? 1 : 0) +
+			" D=" + std::to_string(BB->Distance) +
+			" LOS=" + std::to_string(BB->Los_Degree) +
+			" LOSt=" + std::to_string(BB->Los_Degree_Target) +
+			" AA=" + std::to_string(BB->MyAspectAngle_Degree) +
+			" AO=" + std::to_string(BB->MyAngleOff_Degree) +
+			" E=" + std::to_string(BB->EnergyCompareResult) +
+			" myXYZ=(" + std::to_string(BB->MyLocation_Cartesian.X) + "," +
+			std::to_string(BB->MyLocation_Cartesian.Y) + "," +
+			std::to_string(BB->MyLocation_Cartesian.Z) + ")" +
+			" tgtXYZ=(" + std::to_string(BB->TargetLocaion_Cartesian.X) + "," +
+			std::to_string(BB->TargetLocaion_Cartesian.Y) + "," +
+			std::to_string(BB->TargetLocaion_Cartesian.Z) + ")" +
+			" VP=(" + std::to_string(BB->VP_Cartesian.X) + "," +
+			std::to_string(BB->VP_Cartesian.Y) + "," +
+			std::to_string(BB->VP_Cartesian.Z) + ")" +
+			" thr=" + std::to_string(BB->Throttle));
+	}
 
 	VP = Vector3(BB->VP_Cartesian.X, BB->VP_Cartesian.Y, BB->VP_Cartesian.Z);
 
