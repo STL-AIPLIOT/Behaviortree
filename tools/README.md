@@ -108,3 +108,42 @@ vcxproj 를 최초 1회 `.bak` 으로 백업한다.
 배치 후 `CreateBehaviorTree(1,1)` 실호출로 `Rule.xml` 파싱과 커스텀 노드 26종 등록까지 확인했고,
 `native_bt.py` 가 바인딩하는 export 6개(`CreateBehaviorTree` / `ChangeData` / `Step` / `GetVP` /
 `Reset` / `RemoveBT`)가 모두 존재한다.
+
+## `bt_node_gate.py` — 배치 전에 XML/DLL 조합을 검사한다
+
+`createTreeFromFile()` 은 등록되지 않은 노드 태그를 만나면 예외를 던진다. 그 예외가
+ctypes 경계를 넘어오면 파이썬 쪽에는 `OSError: [WinError -529697949]`(0xe06d7363) 만
+남는다. **DLL 경로 문제처럼 보이지만 원인은 XML 이다.**
+
+```powershell
+python tools\bt_node_gate.py Rule.xml AIP_STIL.dll          # 0 = 통과, 1 = 부족분 있음
+python tools\bt_node_gate.py Rule.xml AIP_BASE.dll --json out.json
+```
+
+**DLL 을 로드하지 않는다.** 로드하면 그 자리에서 죽는 게 이 문제의 본질이라, 파일을
+바이트로 읽어 ASCII/UTF-16LE 문자열만 훑는 정적 분석이다.
+
+세 조합 실측 (2026-08-06):
+
+| XML | DLL | 커스텀 | 확인 | 부족 | exit |
+|---|---|---:|---:|---:|---:|
+| 팀 `Rule.xml` | 벤더 `AIP_BASE.dll` | 27 | 7 | **20** | 1 |
+| 팀 `Rule.xml` | 팀 `AIP_STIL.dll` | 27 | 27 | 0 | 0 |
+| 벤더 `Rule.xml` | 벤더 `AIP_BASE.dll` | 8 | 8 | 0 | 0 |
+
+첫 줄이 실제로 죽는 조합이다. 부족한 20종은 팀이 추가한 BFM 로직 전부
+(`SetBFMMode_*` 4, `Task_*` 13, `CanRetry`, `DECO_CounterAttackCheck`,
+`EnergyCompare`, `PredictManeuver`).
+
+`tools/bt_node_gate_sample.json` 이 두 번째 줄(PASS)의 `--json` 출력 샘플이다.
+
+### 결과를 오독하지 말 것
+
+`registerNodeType<T>("Name")` 의 인자는 컴파일되면 그냥 문자열 리터럴이라, 바이너리
+안에서 다른 용도의 같은 문자열과 구별되지 않는다. 이 도구는 **"그 이름의 문자열이
+있다" 까지만** 말하고 "등록돼 있다" 고는 말하지 않는다. 이름이 겹쳐도 구현이 다를 수
+있다(벤더 DLL 에도 `Task_Pure` 가 있지만 팀 구현과 같다는 보장은 없다).
+
+판정은 OK / CHECK(짧거나 일반적인 이름 — 오탐 가능) / MISSING 세 등급이고,
+**MISSING 만 종료 코드에 반영한다.** CHECK 로 빌드를 막으면 오탐 때문에 도구를 꺼
+버리게 되고, 그러면 진짜 부족분도 놓친다.
