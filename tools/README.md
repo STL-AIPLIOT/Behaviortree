@@ -147,3 +147,42 @@ python tools\bt_node_gate.py Rule.xml AIP_BASE.dll --json out.json
 판정은 OK / CHECK(짧거나 일반적인 이름 — 오탐 가능) / MISSING 세 등급이고,
 **MISSING 만 종료 코드에 반영한다.** CHECK 로 빌드를 막으면 오탐 때문에 도구를 꺼
 버리게 되고, 그러면 진짜 부족분도 놓친다.
+
+## 세 번째 함정 — XML 만 고치면 Release 에 안 간다 (2026-08-08)
+
+`Rule.xml` 은 두 단계를 거쳐야 실행에 반영되는데 **두 단계의 트리거가 다르다.**
+
+| 구간 | 수행 주체 | 실행 조건 |
+|---|---|---|
+| (1) 팀 트리 -> (2) 빌드 트리 | `build_bt.ps1` 의 `Sync-BehaviorTreeSources` | **빌드할 때마다** (기본 켜짐) |
+| (2) 빌드 트리 -> (3) Release 루트 | `build_bt.ps1:216` 의 `-Deploy` 블록 | **`-Deploy` 를 줄 때만** |
+
+**XML 만 고치면 빌드할 이유가 없다.** 그래서 `build_bt.ps1` 을 아예 안 돌리거나
+`-Deploy` 없이 돌리게 되고, (3) 은 옛 XML 그대로 남는다. DLL 은 그 옛 XML 을 읽는다.
+
+이 상태는 **조용하다.** 옛 XML 도 유효한 XML 이라 파싱은 성공하고 노드 구성만 의도와
+달라진다. 빌드 에러도 런타임 에러도 없다. "XML 을 고쳤는데 동작이 그대로" 로 나타난다.
+
+### 대응 — `sync_rule_xml.ps1`
+
+```powershell
+.	ools\sync_rule_xml.ps1            # 확인만. 어디가 낡았는지 보여준다 (exit 1 = 낡음)
+.	ools\sync_rule_xml.ps1 -Apply     # (1) -> (2) -> (3) 전파
+```
+
+빌드하지 않는다. **C++ 을 안 고쳤으면 이걸 쓰고, 고쳤으면 `build_bt.ps1 -Deploy` 를 쓴다.**
+
+하는 일:
+
+1. 세 위치의 SHA256·요소 수·수정시각을 나란히 보여준다
+2. `-Apply` 면 팀 트리 것으로 (2)(3) 을 덮는다. 덮기 전에 `.bak_<타임스탬프>` 로 백업한다
+3. **복사 후 해시를 다시 재서** 실제로 반영됐는지 확인한다 (복사했다고 반영된 게 아니다)
+4. 배포한 XML 과 Release 의 팀 DLL 을 `bt_node_gate.py` 로 대조한다 —
+   XML 만 새것이고 DLL 이 낡았으면 `... is not a registered node` 로 죽으므로 여기서 잡는다
+
+검증: 팀 XML 에 주석 한 줄을 넣어 드리프트를 만든 뒤 확인 모드가 `exit 1` 로 잡아냈고,
+`-Apply` 후 세 곳 해시 일치 + 노드 게이트 통과를 확인했다.
+
+> 백업 파일이 쌓인다. Release 루트의 `Rule.xml.bak_*` 은 배포 대상이 아니므로
+> 제출 전에 정리하라. **`Rule.xml` 본체는 이름을 바꾸거나 옮기지 마라** —
+> `init()` 이 `createTreeFromFile("./Rule.xml")` 로 하드코딩한다.
