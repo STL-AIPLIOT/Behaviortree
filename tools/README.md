@@ -90,15 +90,36 @@ vcxproj 를 최초 1회 `.bak` 으로 백업한다.
 - **`init()` 이 `createTreeFromFile("./Rule.xml")` 로 파일명을 하드코딩**한다. 따라서 Release 루트에
   `Rule.xml` 은 하나만 둘 수 있고, 제출용으로 `Rule_<team>.xml` 로 바꾸려면 그 문자열도 함께 고쳐야 한다.
   DLL 과 XML 은 항상 한 세트로 옮긴다.
-- **그 결과 벤더 `AIP_BASE_target.dll` 은 팀 `Rule.xml` 이 깔린 상태에서 못 쓴다** (2026-08-04 실측).
-  두 DLL 이 같은 `./Rule.xml` 을 읽는데 팀 XML(98요소)에는 벤더 빌드가 등록하지 않은 노드가 들어 있어,
-  `CreateBehaviorTree` 가 C++ 예외를 던지고 ctypes 경계를 넘어 `OSError: [WinError -529697949]`
-  (`0xe06d7363`) 로 올라온다. **DLL 이나 경로 문제로 보이지만 원인은 XML 이다.**
-  - 증상 위치: `native_bt.py:125` → `FighterSim.py:339` → `single_agent_env.py:165`
-  - BT 상대 학습(`target_mode: behavior_tree`)은 `target_behavior_dll: AIP_STIL.dll` 로 돌린다.
-  - 벤더 원본 `Rule.xml`(1104 B, 2026-05-20)은 `C:\AIP_LIB\Rule.xml` 에 남아 있다.
-    벤더 상대가 필요하면 루트 XML 을 그것으로 되돌려야 하고, 그동안 팀 DLL 은 쓸 수 없다.
-    **둘을 동시에 쓸 방법은 파일명 하드코딩을 고치지 않는 한 없다.**
+- **`init()` 의 XML 파일명은 환경변수 `BT_RULE_XML` 로 열려 있다** (2026-08-08 추가).
+  없으면 종전과 같은 `./Rule.xml` 이라 기본 동작은 바뀌지 않는다.
+  `export` 를 늘리지 않고 환경변수로 연 이유는 `native_bt.py` 가 바인딩하는 export 가
+  6종으로 고정이고, 추가하면 수정 금지 영역인 호스트를 건드려야 하기 때문이다.
+
+- **벤더 `AIP_BASE_target.dll` 은 `./Rule_forTraining.xml` 을 읽는다.** (2026-08-08 정정)
+
+  > 이 문서에는 한동안 "벤더 DLL 은 팀 `Rule.xml` 이 깔린 상태에서 못 쓴다" 고 적혀
+  > 있었다. **틀린 진단이었다.** 벤더 DLL 바이너리에 들어 있는 XML 경로 문자열은
+  > `./Rule_forTraining.xml` **하나뿐**이고 `./Rule.xml` 은 아예 없다. 즉 팀 XML 과
+  > 충돌한 것이 아니라 **자기가 찾는 파일이 배포 트리에 없어서** 죽은 것이다.
+  > 증상(`OSError: [WinError -529697949]`, `0xe06d7363`)이 같아 오진하기 쉽다.
+
+  그 파일은 vendor 드롭에 그 이름으로 들어 있지 않다. 내용은 `C:\AIP_LIB\Rule.xml`
+  (1,104 B, 커스텀 8종)과 같으므로 그 이름으로 복사해 두면 된다:
+
+  ```powershell
+  copy C:\AIP_LIB\Rule.xml C:\AIP_LIB\DogFightEnv\Release\Rule_forTraining.xml
+  ```
+
+  배치하면 **두 DLL 을 동시에 쓸 수 있다** — 벤더는 `Rule_forTraining.xml`, 팀은
+  `Rule.xml`(또는 `BT_RULE_XML` 로 지정한 것)을 각자 읽는다. 실측 확인:
+
+  ```
+  [OK] 벤더 AIP_BASE_target.dll  (./Rule_forTraining.xml)
+  [OK] 팀   AIP_STIL.dll         (./Rule.xml)   nodes=45
+  ```
+
+  따라서 BT 상대 학습·평가에 `--target-bt-dll AIP_BASE_target.dll` 을 쓸 수 있다.
+
 - `/sdl` 이 C4996 을 error 로 올려서 `getenv` 를 쓰는 `PredictManeuverCsvLogger.cpp` /
   `LeadPursuitTelemetry.cpp` 가 빌드를 깬다. 스크립트가 `_CRT_SECURE_NO_WARNINGS` 를 넣어 해결한다.
 
