@@ -174,8 +174,28 @@ void UCPPBehaviorTree::init()
 
 
 	//파일로 트리 구조 정의
-	//파일 이름은 본인의 팀이름으로 해주세요!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-	tree = Factory.createTreeFromFile("./Rule.xml");
+	//
+	// 파일명을 하드코딩하지 않는다. 환경변수 BT_RULE_XML 이 있으면 그 경로를 쓰고,
+	// 없으면 종전과 같은 "./Rule.xml" 이다(기본 동작 불변).
+	//
+	// 왜 필요했나 — 하드코딩 하나가 세 가지를 동시에 막고 있었다:
+	//   1) Release 루트에 Rule.xml 을 하나만 둘 수 있어, 팀 XML 을 놓으면
+	//      벤더 AIP_BASE_target.dll 이 자기 노드를 못 찾고 C++ 예외로 죽었다
+	//      (ctypes 경계를 넘으면 OSError: [WinError -529697949] 로만 보인다).
+	//   2) 제출용으로 Rule_<team>.xml 로 바꿀 수 없었다.
+	//   3) XML 을 골라 쓰는 구조가 성립하지 않았다.
+	//
+	// export 를 늘리지 않고 환경변수로 연 이유: native_bt.py 가 바인딩하는 export 는
+	// 6종(CreateBehaviorTree/ChangeData/Step/GetVP/Reset/RemoveBT)으로 고정이고,
+	// 여기에 추가하면 호스트 쪽 수정이 필요해진다(수정 금지 영역).
+	// 상대경로는 CWD 기준이다 — 실행 디렉터리가 Release 루트여야 한다.
+	std::string rulePath = "./Rule.xml";
+	if (const char* envPath = std::getenv("BT_RULE_XML"))
+	{
+		if (envPath[0] != '\0') { rulePath = envPath; }
+	}
+	if (BtDiagEnabled()) { BtDiag("[init] rule xml = " + rulePath); }
+	tree = Factory.createTreeFromFile(rulePath);
 
 	// 트리가 실제로 만들어졌는지 (노드 개수 포함) 파일로 남긴다.
 	if (BtDiagEnabled())

@@ -90,15 +90,36 @@ vcxproj 를 최초 1회 `.bak` 으로 백업한다.
 - **`init()` 이 `createTreeFromFile("./Rule.xml")` 로 파일명을 하드코딩**한다. 따라서 Release 루트에
   `Rule.xml` 은 하나만 둘 수 있고, 제출용으로 `Rule_<team>.xml` 로 바꾸려면 그 문자열도 함께 고쳐야 한다.
   DLL 과 XML 은 항상 한 세트로 옮긴다.
-- **그 결과 벤더 `AIP_BASE_target.dll` 은 팀 `Rule.xml` 이 깔린 상태에서 못 쓴다** (2026-08-04 실측).
-  두 DLL 이 같은 `./Rule.xml` 을 읽는데 팀 XML(98요소)에는 벤더 빌드가 등록하지 않은 노드가 들어 있어,
-  `CreateBehaviorTree` 가 C++ 예외를 던지고 ctypes 경계를 넘어 `OSError: [WinError -529697949]`
-  (`0xe06d7363`) 로 올라온다. **DLL 이나 경로 문제로 보이지만 원인은 XML 이다.**
-  - 증상 위치: `native_bt.py:125` → `FighterSim.py:339` → `single_agent_env.py:165`
-  - BT 상대 학습(`target_mode: behavior_tree`)은 `target_behavior_dll: AIP_STIL.dll` 로 돌린다.
-  - 벤더 원본 `Rule.xml`(1104 B, 2026-05-20)은 `C:\AIP_LIB\Rule.xml` 에 남아 있다.
-    벤더 상대가 필요하면 루트 XML 을 그것으로 되돌려야 하고, 그동안 팀 DLL 은 쓸 수 없다.
-    **둘을 동시에 쓸 방법은 파일명 하드코딩을 고치지 않는 한 없다.**
+- **`init()` 의 XML 파일명은 환경변수 `BT_RULE_XML` 로 열려 있다** (2026-08-08 추가).
+  없으면 종전과 같은 `./Rule.xml` 이라 기본 동작은 바뀌지 않는다.
+  `export` 를 늘리지 않고 환경변수로 연 이유는 `native_bt.py` 가 바인딩하는 export 가
+  6종으로 고정이고, 추가하면 수정 금지 영역인 호스트를 건드려야 하기 때문이다.
+
+- **벤더 `AIP_BASE_target.dll` 은 `./Rule_forTraining.xml` 을 읽는다.** (2026-08-08 정정)
+
+  > 이 문서에는 한동안 "벤더 DLL 은 팀 `Rule.xml` 이 깔린 상태에서 못 쓴다" 고 적혀
+  > 있었다. **틀린 진단이었다.** 벤더 DLL 바이너리에 들어 있는 XML 경로 문자열은
+  > `./Rule_forTraining.xml` **하나뿐**이고 `./Rule.xml` 은 아예 없다. 즉 팀 XML 과
+  > 충돌한 것이 아니라 **자기가 찾는 파일이 배포 트리에 없어서** 죽은 것이다.
+  > 증상(`OSError: [WinError -529697949]`, `0xe06d7363`)이 같아 오진하기 쉽다.
+
+  그 파일은 vendor 드롭에 그 이름으로 들어 있지 않다. 내용은 `C:\AIP_LIB\Rule.xml`
+  (1,104 B, 커스텀 8종)과 같으므로 그 이름으로 복사해 두면 된다:
+
+  ```powershell
+  copy C:\AIP_LIB\Rule.xml C:\AIP_LIB\DogFightEnv\Release\Rule_forTraining.xml
+  ```
+
+  배치하면 **두 DLL 을 동시에 쓸 수 있다** — 벤더는 `Rule_forTraining.xml`, 팀은
+  `Rule.xml`(또는 `BT_RULE_XML` 로 지정한 것)을 각자 읽는다. 실측 확인:
+
+  ```
+  [OK] 벤더 AIP_BASE_target.dll  (./Rule_forTraining.xml)
+  [OK] 팀   AIP_STIL.dll         (./Rule.xml)   nodes=45
+  ```
+
+  따라서 BT 상대 학습·평가에 `--target-bt-dll AIP_BASE_target.dll` 을 쓸 수 있다.
+
 - `/sdl` 이 C4996 을 error 로 올려서 `getenv` 를 쓰는 `PredictManeuverCsvLogger.cpp` /
   `LeadPursuitTelemetry.cpp` 가 빌드를 깬다. 스크립트가 `_CRT_SECURE_NO_WARNINGS` 를 넣어 해결한다.
 
@@ -108,3 +129,81 @@ vcxproj 를 최초 1회 `.bak` 으로 백업한다.
 배치 후 `CreateBehaviorTree(1,1)` 실호출로 `Rule.xml` 파싱과 커스텀 노드 26종 등록까지 확인했고,
 `native_bt.py` 가 바인딩하는 export 6개(`CreateBehaviorTree` / `ChangeData` / `Step` / `GetVP` /
 `Reset` / `RemoveBT`)가 모두 존재한다.
+
+## `bt_node_gate.py` — 배치 전에 XML/DLL 조합을 검사한다
+
+`createTreeFromFile()` 은 등록되지 않은 노드 태그를 만나면 예외를 던진다. 그 예외가
+ctypes 경계를 넘어오면 파이썬 쪽에는 `OSError: [WinError -529697949]`(0xe06d7363) 만
+남는다. **DLL 경로 문제처럼 보이지만 원인은 XML 이다.**
+
+```powershell
+python tools\bt_node_gate.py Rule.xml AIP_STIL.dll          # 0 = 통과, 1 = 부족분 있음
+python tools\bt_node_gate.py Rule.xml AIP_BASE.dll --json out.json
+```
+
+**DLL 을 로드하지 않는다.** 로드하면 그 자리에서 죽는 게 이 문제의 본질이라, 파일을
+바이트로 읽어 ASCII/UTF-16LE 문자열만 훑는 정적 분석이다.
+
+세 조합 실측 (2026-08-06):
+
+| XML | DLL | 커스텀 | 확인 | 부족 | exit |
+|---|---|---:|---:|---:|---:|
+| 팀 `Rule.xml` | 벤더 `AIP_BASE.dll` | 27 | 7 | **20** | 1 |
+| 팀 `Rule.xml` | 팀 `AIP_STIL.dll` | 27 | 27 | 0 | 0 |
+| 벤더 `Rule.xml` | 벤더 `AIP_BASE.dll` | 8 | 8 | 0 | 0 |
+
+첫 줄이 실제로 죽는 조합이다. 부족한 20종은 팀이 추가한 BFM 로직 전부
+(`SetBFMMode_*` 4, `Task_*` 13, `CanRetry`, `DECO_CounterAttackCheck`,
+`EnergyCompare`, `PredictManeuver`).
+
+`tools/bt_node_gate_sample.json` 이 두 번째 줄(PASS)의 `--json` 출력 샘플이다.
+
+### 결과를 오독하지 말 것
+
+`registerNodeType<T>("Name")` 의 인자는 컴파일되면 그냥 문자열 리터럴이라, 바이너리
+안에서 다른 용도의 같은 문자열과 구별되지 않는다. 이 도구는 **"그 이름의 문자열이
+있다" 까지만** 말하고 "등록돼 있다" 고는 말하지 않는다. 이름이 겹쳐도 구현이 다를 수
+있다(벤더 DLL 에도 `Task_Pure` 가 있지만 팀 구현과 같다는 보장은 없다).
+
+판정은 OK / CHECK(짧거나 일반적인 이름 — 오탐 가능) / MISSING 세 등급이고,
+**MISSING 만 종료 코드에 반영한다.** CHECK 로 빌드를 막으면 오탐 때문에 도구를 꺼
+버리게 되고, 그러면 진짜 부족분도 놓친다.
+
+## 세 번째 함정 — XML 만 고치면 Release 에 안 간다 (2026-08-08)
+
+`Rule.xml` 은 두 단계를 거쳐야 실행에 반영되는데 **두 단계의 트리거가 다르다.**
+
+| 구간 | 수행 주체 | 실행 조건 |
+|---|---|---|
+| (1) 팀 트리 -> (2) 빌드 트리 | `build_bt.ps1` 의 `Sync-BehaviorTreeSources` | **빌드할 때마다** (기본 켜짐) |
+| (2) 빌드 트리 -> (3) Release 루트 | `build_bt.ps1:216` 의 `-Deploy` 블록 | **`-Deploy` 를 줄 때만** |
+
+**XML 만 고치면 빌드할 이유가 없다.** 그래서 `build_bt.ps1` 을 아예 안 돌리거나
+`-Deploy` 없이 돌리게 되고, (3) 은 옛 XML 그대로 남는다. DLL 은 그 옛 XML 을 읽는다.
+
+이 상태는 **조용하다.** 옛 XML 도 유효한 XML 이라 파싱은 성공하고 노드 구성만 의도와
+달라진다. 빌드 에러도 런타임 에러도 없다. "XML 을 고쳤는데 동작이 그대로" 로 나타난다.
+
+### 대응 — `sync_rule_xml.ps1`
+
+```powershell
+.	ools\sync_rule_xml.ps1            # 확인만. 어디가 낡았는지 보여준다 (exit 1 = 낡음)
+.	ools\sync_rule_xml.ps1 -Apply     # (1) -> (2) -> (3) 전파
+```
+
+빌드하지 않는다. **C++ 을 안 고쳤으면 이걸 쓰고, 고쳤으면 `build_bt.ps1 -Deploy` 를 쓴다.**
+
+하는 일:
+
+1. 세 위치의 SHA256·요소 수·수정시각을 나란히 보여준다
+2. `-Apply` 면 팀 트리 것으로 (2)(3) 을 덮는다. 덮기 전에 `.bak_<타임스탬프>` 로 백업한다
+3. **복사 후 해시를 다시 재서** 실제로 반영됐는지 확인한다 (복사했다고 반영된 게 아니다)
+4. 배포한 XML 과 Release 의 팀 DLL 을 `bt_node_gate.py` 로 대조한다 —
+   XML 만 새것이고 DLL 이 낡았으면 `... is not a registered node` 로 죽으므로 여기서 잡는다
+
+검증: 팀 XML 에 주석 한 줄을 넣어 드리프트를 만든 뒤 확인 모드가 `exit 1` 로 잡아냈고,
+`-Apply` 후 세 곳 해시 일치 + 노드 게이트 통과를 확인했다.
+
+> 백업 파일이 쌓인다. Release 루트의 `Rule.xml.bak_*` 은 배포 대상이 아니므로
+> 제출 전에 정리하라. **`Rule.xml` 본체는 이름을 바꾸거나 옮기지 마라** —
+> `init()` 이 `createTreeFromFile("./Rule.xml")` 로 하드코딩한다.

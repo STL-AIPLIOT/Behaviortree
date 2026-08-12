@@ -1,4 +1,4 @@
-<#
+﻿<#
 .SYNOPSIS
   AIP_DCS BehaviorTree DLL 을 빌드하고 DogFightEnv\Release 로 배치한다.
 
@@ -197,6 +197,26 @@ Write-Host "`n산출 DLL:"
 $dll | ForEach-Object { "  {0}  {1:N0} bytes  {2}" -f $_.FullName, $_.Length, $_.LastWriteTime }
 
 # ---- 배치 ---------------------------------------------------------
+if (-not $Deploy) {
+    # -Deploy 없이 끝내면 Release 루트의 Rule.xml 은 그대로다. XML 만 고친 경우
+    # 빌드할 이유가 없어 이 스크립트조차 안 돌리게 되고, DLL 은 옛 XML 을 계속 읽는다.
+    # 파싱은 성공하므로 에러 없이 노드 구성만 달라진다 — 조용해서 추적이 어렵다.
+    $rtXml = Join-Path $ReleaseDir "Rule.xml"
+    $tmXml = Join-Path $TeamRoot   "Rule.xml"
+    if ((Test-Path $rtXml) -and (Test-Path $tmXml)) {
+        $hr = (Get-FileHash $rtXml -Algorithm SHA256).Hash
+        $ht = (Get-FileHash $tmXml -Algorithm SHA256).Hash
+        if ($hr -ne $ht) {
+            Write-Host ""
+            Write-Warning "Release 루트의 Rule.xml 이 팀 트리와 다르다. DLL 은 옛 XML 을 읽는다."
+            Write-Host  "         팀     : $tmXml"
+            Write-Host  "         런타임 : $rtXml"
+            Write-Host  "         맞추려면: .	ools\sync_rule_xml.ps1 -Apply"
+            Write-Host  "         (C++ 도 고쳤다면 이 스크립트를 -Deploy 로 다시 돌려라)"
+        }
+    }
+}
+
 if ($Deploy) {
     if (-not (Test-Path $ReleaseDir)) { throw "ReleaseDir 이 없다: $ReleaseDir" }
     $target  = $dll | Select-Object -First 1
