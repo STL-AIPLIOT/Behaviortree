@@ -18,14 +18,14 @@ namespace Action
         Task_CloseDistance(const std::string& name, const BT::NodeConfiguration& config)
             : BT::SyncActionNode(name, config) {}
 
-        // XML ÆÄ¶ó¹ÌÅÍ´Â ¹®ÀÚ¿­·Î ¹Ş¾Æ¼­ std::stof »ç¿ë (float convert Æ¯¼öÈ­ ÀÌ½´ È¸ÇÇ)
+        // XML íŒŒë¼ë¯¸í„°ëŠ” ë¬¸ìì—´ë¡œ ë°›ì•„ì„œ std::stof ì‚¬ìš© (float convert íŠ¹ìˆ˜í™” ì´ìŠˆ íšŒí”¼)
         static BT::PortsList providedPorts()
         {
             return {
                 BT::InputPort<CPPBlackBoard*>("BB"),
-                BT::InputPort<std::string>("DesiredRange"), // m (¿¹: "400")
-                BT::InputPort<std::string>("LeadTime"),     // s (¿¹: "2.0")
-                BT::InputPort<std::string>("UpBias")        // m (¿¹: "0") À§·Î »ìÂ¦ ¶ç¿ì°í ½ÍÀ» ¶§
+                BT::InputPort<std::string>("DesiredRange"), // m (ì˜ˆ: "400")
+                BT::InputPort<std::string>("LeadTime"),     // s (ì˜ˆ: "2.0")
+                BT::InputPort<std::string>("UpBias")        // m (ì˜ˆ: "0") ìœ„ë¡œ ì‚´ì§ ë„ìš°ê³  ì‹¶ì„ ë•Œ
             };
         }
 

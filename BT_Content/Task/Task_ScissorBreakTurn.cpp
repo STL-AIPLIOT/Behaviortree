@@ -29,7 +29,7 @@ BT::NodeStatus Task_ScissorBreakTurn::tick()
     Vector3 offset = (dir == 0 ? BB->MyRightVector : -BB->MyRightVector) * side;
     BB->VP_Cartesian = BB->MyLocation_Cartesian + offset;
 
-    std::cout << "[Task_ScissorBreakTurn] ¹æÇâÀüÈ¯ "
+    std::cout << "[Task_ScissorBreakTurn] ë°©í–¥ì „í™˜ "
         << (dir == 0 ? "Right" : "Left") << " | D=" << D << ", side=" << side << "\n";
     return BT::NodeStatus::SUCCESS;
 }

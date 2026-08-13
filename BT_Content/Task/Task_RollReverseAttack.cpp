@@ -11,34 +11,34 @@ BT::NodeStatus Task_RollReverseAttack::tick()
     auto bb_res = getInput<CPPBlackBoard*>("BB");
     if (!bb_res)
     {
-        std::cerr << "[Task_RollReverseAttack] BB Æ÷ÀÎÅÍ °¡Á®¿À±â ½ÇÆĞ\n";
+        std::cerr << "[Task_RollReverseAttack] BB í¬ì¸í„° ê°€ì ¸ì˜¤ê¸° ì‹¤íŒ¨\n";
         return BT::NodeStatus::FAILURE;
     }
 
     CPPBlackBoard* BB = bb_res.value();
 
-    // ±ÙÁ¢ °¡µå: ³Ê¹« °¡±î¿ì¸é ·Ñ¸®¹ö½º ´ë½Å "»ìÂ¦ ÀÌ°İ"¸¸
+    // ê·¼ì ‘ ê°€ë“œ: ë„ˆë¬´ ê°€ê¹Œìš°ë©´ ë¡¤ë¦¬ë²„ìŠ¤ ëŒ€ì‹  "ì‚´ì§ ì´ê²©"ë§Œ
     const float D = BB->Distance;
 
-    float side = 800.0f;  // ¿ø¾È
-    float back = 300.0f;  // ¿ø¾È
+    float side = 800.0f;  // ì›ì•ˆ
+    float back = 300.0f;  // ì›ì•ˆ
 
-    // ¼Óµµ, °Å¸® µî¿¡ µû¶ó »ìÂ¦ Å¬·¥ÇÁ (°úÁ¶ÀÛ ¹æÁö)
+    // ì†ë„, ê±°ë¦¬ ë“±ì— ë”°ë¼ ì‚´ì§ í´ë¨í”„ (ê³¼ì¡°ì‘ ë°©ì§€)
     side = clampf(side, 400.0f, 900.0f);
     back = clampf(back, 150.0f, 400.0f);
 
     if (D < 250.0f) {
-        // ³Ê¹« °¡±î¿ì¸é ÀÛÀº ·Ñ¸®¹ö½º (Ãø¹æ 400, ÈÄ¹æ 150)
+        // ë„ˆë¬´ ê°€ê¹Œìš°ë©´ ì‘ì€ ë¡¤ë¦¬ë²„ìŠ¤ (ì¸¡ë°© 400, í›„ë°© 150)
         side = 400.0f;
         back = 150.0f;
     }
 
-    // Roll Reverse: Å©°Ô Àû±â ¿À¸¥ÂÊÀ¸·Î ºüÁö±â
+    // Roll Reverse: í¬ê²Œ ì ê¸° ì˜¤ë¥¸ìª½ìœ¼ë¡œ ë¹ ì§€ê¸°
     Vector3 reverse_offset = BB->TargetRightVector * side - BB->TargetForwardVector * back;
 
     BB->VP_Cartesian = BB->MyLocation_Cartesian + reverse_offset;
 
-    std::cout << "[Task_RollReverseAttack] Roll Reverse ¼öÇà | D=" << D
+    std::cout << "[Task_RollReverseAttack] Roll Reverse ìˆ˜í–‰ | D=" << D
         << " | side=" << side << ", back=" << back << "\n";
 
     return BT::NodeStatus::SUCCESS;

@@ -32,8 +32,31 @@
   주의: BT_Content 만이 아니라 저장소 루트의 xml_parsing.cpp / behavior_tree.cpp 같은
   라이브러리 소스도 함께 봐야 한다. 예전 절차는 BT_Content 만 복사해서 이 결함을 놓쳤다.
 
+  ATK 분기 (2026-08-13)
+  ---------------------
+  이 저장소는 공격형 실험 브랜치(ATK)다. 원본 Behaviortree 와 A/B 비교를 하려면
+  두 빌드가 서로를 덮어쓰지 않아야 하므로, 기본값이 전부 ATK 전용 경로로 바뀌어 있다.
+
+    호스트 트리 : C:\AIP_LIB\AIP_DCS_ATK     (원본은 C:\AIP_LIB\AIP_DCS)
+    빌드 산출   : C:\AIP_LIB\bin_atk\...     (원본은 C:\AIP_LIB\bin\...)
+    DLL 이름    : AIP_STIL_ATK.dll           (원본은 AIP_STIL.dll)
+    Rule XML    : Rule_ATK.xml               (원본은 Rule.xml)
+
+  Release 루트에 두 DLL 과 두 XML 이 공존하고, 실행 쪽에서 BT_RULE_XML 로 어느 XML 을
+  읽을지 고른다(CPPBehaviorTree.cpp 의 init() 참조). 그래서 원본을 건드리지 않고
+  ownship=ATK / target=원본 같은 대전을 그대로 돌릴 수 있다.
+
 .PARAMETER HostRoot
   AIP_DCS 폴더(.sln 이 있는 곳). 환경변수 AIP_DCS_ROOT 로도 지정 가능.
+  주의: AIP_DCS_ROOT 가 원본을 가리키도록 설정돼 있으면 ATK 소스가 원본 호스트로
+  동기화된다. ATK 에서는 환경변수를 두지 말고 기본값을 쓰는 편이 안전하다.
+
+.PARAMETER BinName
+  산출물 루트 폴더 이름. vcxproj 의 OutDir 과 반드시 같아야 한다.
+
+.PARAMETER RuleXmlName
+  Release 루트에 배치할 XML 파일명. 저장소 안에서는 원본과 diff 가 되도록
+  계속 Rule.xml 이고, 배치할 때만 이 이름으로 바뀐다.
 
 .PARAMETER NoSync
   팀 트리 -> 호스트 소스 동기화를 건너뛴다. 낡은 소스가 빌드될 수 있다.
@@ -45,15 +68,17 @@
   배치할 DLL 이름에 쓰인다(AIP_<TeamName>.dll). vendor 의 AIP_BASE*.dll 은 절대 덮어쓰지 않는다.
 
 .EXAMPLE
-  .\tools\build_bt.ps1 -HostRoot C:\AIP_LIB\AIP_DCS
-  .\tools\build_bt.ps1 -HostRoot C:\AIP_LIB\AIP_DCS -ReleaseDir C:\AIP_LIB\DogFightEnv\Release -Deploy
+  .\tools\build_bt.ps1
+  .\tools\build_bt.ps1 -Deploy
 #>
 param(
-    [string]$HostRoot   = $(if ($env:AIP_DCS_ROOT) { $env:AIP_DCS_ROOT } else { "C:\AIP_LIB\AIP_DCS" }),
-    [string]$ReleaseDir = "C:\AIP_LIB\DogFightEnv\Release",
-    [string]$Config     = "Debug",
-    [string]$Platform   = "x64",
-    [string]$TeamName   = "STIL",
+    [string]$HostRoot    = $(if ($env:AIP_DCS_ROOT) { $env:AIP_DCS_ROOT } else { "C:\AIP_LIB\AIP_DCS_ATK" }),
+    [string]$ReleaseDir  = "C:\AIP_LIB\DogFightEnv\Release",
+    [string]$Config      = "Debug",
+    [string]$Platform    = "x64",
+    [string]$TeamName    = "STIL_ATK",
+    [string]$BinName     = "bin_atk",
+    [string]$RuleXmlName = "Rule_ATK.xml",
     [switch]$Deploy,
     # A/B 비교용. 각도 wrap 보정만 끈 'before' DLL 을 만든다.
     # BT_Content/AngleUtil.h 의 PM_DISABLE_WRAP_FIX 설명 참조.
@@ -190,7 +215,10 @@ if ($errors.Count -gt 0) {
 if ($code -ne 0) { exit $code }
 
 # ---- 산출물 -------------------------------------------------------
-$outDir = Join-Path (Split-Path $HostRoot -Parent) ("bin\{0}.{1}" -f $Config.ToLower(), $Platform)
+# vcxproj 의 OutDir 은 $(SolutionDir)..\$BinName\$(Configuration).$(Platform)\ 이다.
+# 여기서 다른 곳을 보면 "DLL 이 없다" 로 끝나거나, 더 나쁘게는 원본 트리의 DLL 을
+# 집어 배치한다. 둘은 반드시 같이 움직여야 한다.
+$outDir = Join-Path (Split-Path $HostRoot -Parent) ("{0}\{1}.{2}" -f $BinName, $Config, $Platform)
 $dll = Get-ChildItem $outDir -Filter *.dll -ErrorAction SilentlyContinue | Sort-Object LastWriteTime -Descending
 if (-not $dll) { Write-Host "!! DLL 이 없다: $outDir"; exit 1 }
 Write-Host "`n산출 DLL:"
@@ -201,7 +229,7 @@ if (-not $Deploy) {
     # -Deploy 없이 끝내면 Release 루트의 Rule.xml 은 그대로다. XML 만 고친 경우
     # 빌드할 이유가 없어 이 스크립트조차 안 돌리게 되고, DLL 은 옛 XML 을 계속 읽는다.
     # 파싱은 성공하므로 에러 없이 노드 구성만 달라진다 — 조용해서 추적이 어렵다.
-    $rtXml = Join-Path $ReleaseDir "Rule.xml"
+    $rtXml = Join-Path $ReleaseDir $RuleXmlName
     $tmXml = Join-Path $TeamRoot   "Rule.xml"
     if ((Test-Path $rtXml) -and (Test-Path $tmXml)) {
         $hr = (Get-FileHash $rtXml -Algorithm SHA256).Hash
@@ -221,7 +249,7 @@ if ($Deploy) {
     if (-not (Test-Path $ReleaseDir)) { throw "ReleaseDir 이 없다: $ReleaseDir" }
     $target  = $dll | Select-Object -First 1
     $teamDll = Join-Path $ReleaseDir "AIP_$TeamName.dll"
-    $teamXml = Join-Path $ReleaseDir "Rule.xml"
+    $teamXml = Join-Path $ReleaseDir $RuleXmlName
 
     foreach ($p in @($teamDll, $teamXml)) {
         if (Test-Path $p) {
@@ -235,9 +263,11 @@ if ($Deploy) {
     Copy-Item $target.FullName -Destination $teamDll -Force
     Copy-Item (Join-Path $HostRoot "BehaviorTree\Rule.xml") -Destination $teamXml -Force
     Write-Host "  $($target.Name) -> AIP_$TeamName.dll"
-    Write-Host "  Rule.xml"
+    Write-Host "  Rule.xml -> $RuleXmlName"
     Write-Host ""
-    Write-Host "  주의: init() 이 createTreeFromFile(`"./Rule.xml`") 로 파일명을 하드코딩한다."
-    Write-Host "        Release 루트에는 Rule.xml 이 하나만 존재할 수 있고,"
-    Write-Host "        제출용으로 Rule_<team>.xml 로 바꾸려면 init() 의 문자열도 함께 고쳐야 한다."
+    Write-Host "  이 DLL 은 기본값으로 ./Rule.xml 을 읽는다. ATK 용 XML 을 읽히려면"
+    Write-Host "  실행 프로세스에 환경변수를 줘야 한다:"
+    Write-Host "        `$env:BT_RULE_XML = `"./$RuleXmlName`""
+    Write-Host "  주지 않으면 원본 트리가 배치한 Rule.xml 로 ATK DLL 이 돌아간다 —"
+    Write-Host "  파싱은 성공하므로 에러 없이 A/B 비교만 무의미해진다."
 }
