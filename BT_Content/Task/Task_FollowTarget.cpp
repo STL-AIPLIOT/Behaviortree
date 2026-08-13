@@ -11,40 +11,40 @@ namespace Action
 
         CPPBlackBoard* BB = bb_opt.value();
 
-        // ê¸°ë³¸ ì‹ í˜¸
+        // ±âº» ½ÅÈ£
         Vector3 myPos = BB->MyLocation_Cartesian;
         Vector3 tgtPos = BB->TargetLocaion_Cartesian;
         Vector3 Hm = BB->MyForwardVector;
         Vector3 Ht = BB->TargetForwardVector;
 
-        // ê°€ë“œ & ì •ê·œí™”
+        // °¡µå & Á¤±ÔÈ­
         Vector3 LOS = tgtPos - myPos;
         if (!normalize(LOS))
         {
-            // ë¹„ì •ìƒ LOS â†’ ì •ë©´ìœ¼ë¡œ ì„ì‹œ ì¶”ì¢…
+            // ºñÁ¤»ó LOS ¡æ Á¤¸éÀ¸·Î ÀÓ½Ã ÃßÁ¾
             BB->VP_Cartesian = myPos + Vector3(1, 0, 0) * 1000.0;
             std::cout << "[Pure/Lag] Fallback: invalid LOS\n";
             return BT::NodeStatus::SUCCESS;
         }
         if (!normalize(Hm) || !normalize(Ht))
         {
-            // ì§„í–‰ë°©í–¥ ì‹¤íŒ¨ â†’ Pure í´ë°±
+            // ÁøÇà¹æÇâ ½ÇÆĞ ¡æ Pure Æú¹é
             BB->VP_Cartesian = tgtPos;
             std::cout << "[Pure/Lag] Fallback: invalid forward vector(s)\n";
             return BT::NodeStatus::SUCCESS;
         }
 
-        // íƒ€ê¹ƒ ì§„í–‰ë°©í–¥(Ht) ê¸°ì¤€ ê°ë„
+        // Å¸±ê ÁøÇà¹æÇâ(Ht) ±âÁØ °¢µµ
         float theta_los_deg = rad2deg(safe_acos(static_cast<float>(LOS.dot(Ht))));
         float theta_m_deg = rad2deg(safe_acos(static_cast<float>(Hm.dot(Ht))));
         float diff = theta_m_deg - theta_los_deg;
 
-        // í˜„ì¬ ê±°ë¦¬
+        // ÇöÀç °Å¸®
         float D = static_cast<float>(BB->Distance);
         if (D < 1.0f) D = static_cast<float>((tgtPos - myPos).length());
 
-        // --- ë¶„ê¸°: Pure / Lag ---
-        // Pure: ë‚´ ê¸°ìˆ˜ì™€ LOSê°€ ê±°ì˜ ë™ì¼
+        // --- ºĞ±â: Pure / Lag ---
+        // Pure: ³» ±â¼ö¿Í LOS°¡ °ÅÀÇ µ¿ÀÏ
         if (std::fabs(diff) <= EPS_DEG)
         {
             BB->VP_Cartesian = tgtPos; // Pure
@@ -53,11 +53,11 @@ namespace Action
                 << " theta_m=" << theta_m_deg
                 << " |diff|=" << std::fabs(diff) << "\n";
         }
-        // Lag: ë‚´ ê¸°ìˆ˜ê°€ LOSë³´ë‹¤ ë’¤ìª½
+        // Lag: ³» ±â¼ö°¡ LOSº¸´Ù µÚÂÊ
         else if (diff > (EPS_DEG + HYS_DEG))
         {
             float Dref = clampf(D, D_MIN_REF, D_MAX_REF);
-            Vector3 VP = tgtPos - Ht * (K_LAG * Dref); // íƒ€ê¹ƒ ë’¤ìª½ìœ¼ë¡œ
+            Vector3 VP = tgtPos - Ht * (K_LAG * Dref); // Å¸±ê µÚÂÊÀ¸·Î
             BB->VP_Cartesian = VP;
             std::cout << "[Lag]  D=" << D
                 << " Dref=" << Dref
@@ -66,7 +66,7 @@ namespace Action
                 << " theta_m=" << theta_m_deg
                 << " diff=" << diff << "\n";
         }
-        // ê²½ê³„: Pureë¡œ ì²˜ë¦¬
+        // °æ°è: Pure·Î Ã³¸®
         else
         {
             BB->VP_Cartesian = tgtPos;
@@ -76,17 +76,17 @@ namespace Action
                 << " diff=" << diff << "\n";
         }
 
-        // ===== ê³µí†µ ë³´ì •: ê±°ë¦¬/AA(0Â°)/AO(2Â°) =====
+        // ===== °øÅë º¸Á¤: °Å¸®/AA(0¡Æ)/AO(2¡Æ) =====
         {
-            // ë³´ì •ìš© ë²¡í„° ì¬í™•ì¸
+            // º¸Á¤¿ë º¤ÅÍ ÀçÈ®ÀÎ
             Vector3 VP = BB->VP_Cartesian;
             Vector3 Ht2 = BB->TargetForwardVector;  normalize(Ht2);
             Vector3 Hm2 = BB->MyForwardVector;      normalize(Hm2);
             Vector3 LOS2 = tgtPos - myPos;          normalize(LOS2);
 
-            // 1) ê±°ë¦¬ ë³´ì •: 300~3000 ft ìœ íš¨ ë²”ìœ„ì— ìˆ˜ë ´
-            //  - ë©€ìˆ˜ë¡ LOS ë°©í–¥ìœ¼ë¡œ ë” ë‹¹ê¹€
-            //  - 300ft ê·¼ì ‘ ì‹œì—ëŠ” ê³¼ë„í•œ ê·¼ì ‘ ì™„í™”ë¥¼ ìœ„í•´ Ht ë°©í–¥ìœ¼ë¡œ ì†Œí­ ì´ë™
+            // 1) °Å¸® º¸Á¤: 300~3000 ft À¯È¿ ¹üÀ§¿¡ ¼ö·Å
+            //  - ¸Ö¼ö·Ï LOS ¹æÇâÀ¸·Î ´õ ´ç±è
+            //  - 300ft ±ÙÁ¢ ½Ã¿¡´Â °úµµÇÑ ±ÙÁ¢ ¿ÏÈ­¸¦ À§ÇØ Ht ¹æÇâÀ¸·Î ¼ÒÆø ÀÌµ¿
             {
                 float far_ratio = (D - DMOD_MIN) / std::max(1.0f, (DMOD_MAX - DMOD_MIN));
                 far_ratio = std::max(0.0f, std::min(1.0f, far_ratio));
@@ -104,16 +104,16 @@ namespace Action
                 }
             }
 
-            // 2) AA(Aspect) ë³´ì •(â†’0Â°): íƒ€ê¹ƒ í…Œì¼(-Ht) ë°©í–¥ìœ¼ë¡œ ë³´ì •
+            // 2) AA(Aspect) º¸Á¤(¡æ0¡Æ): Å¸±ê Å×ÀÏ(-Ht) ¹æÇâÀ¸·Î º¸Á¤
             {
-                float AA = static_cast<float>(BB->MyAspectAngle_Degree);  // ëª©í‘œ 0Â°
+                float AA = static_cast<float>(BB->MyAspectAngle_Degree);  // ¸ñÇ¥ 0¡Æ
                 float Dscale = std::min(D, DMOD_MAX);
                 VP = VP + (-Ht2) * (K_AA * AA * 0.001f * Dscale);
             }
 
-            // 3) AO(LOSê°) ë³´ì •(â†’2Â°): lateral_dir = Hm - LOS*(HmÂ·LOS)
+            // 3) AO(LOS°¢) º¸Á¤(¡æ2¡Æ): lateral_dir = Hm - LOS*(Hm¡¤LOS)
             {
-                float ao_err = static_cast<float>(BB->MyAngleOff_Degree) - 2.0f; // ëª©í‘œ 2Â°
+                float ao_err = static_cast<float>(BB->MyAngleOff_Degree) - 2.0f; // ¸ñÇ¥ 2¡Æ
                 Vector3 lateral = Hm2 - LOS2 * static_cast<float>(Hm2.dot(LOS2));
                 if (lateral.length() > 1e-6) normalize(lateral);
                 float Dscale = std::min(D, DMOD_MAX);

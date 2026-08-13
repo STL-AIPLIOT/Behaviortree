@@ -6,9 +6,9 @@
 #include "AspectAngleUpdate.h"
 #include "SelectTarget.h"
 
-#include "PredictManeuver.h" //ì ê¸°ì˜ ìœ„ì¹˜ì™€ íšŒì „ ì •ë³´ë¥¼ ìµœê·¼ í”„ë ˆì„ë§ˆë‹¤ ì €ì¥
-#include "EnergyCompare.h"  // ì ê¸°ì™€ ë‚˜ì˜ energy ì°¨ì´ ë¹„êµ
-#include "SetBFMMode_OBFM.h" // OBFM ì¡°ê±´ ê¸°ë°˜ íŒë³„ ë…¸ë“œ
-#include "SetBFMMode_DBFM.h" // DBFM ì¡°ê±´ ê¸°ë°˜ íŒë³„ ë…¸ë“œ
-#include "SetBFMMode_HABFM.h" // HABFM ì¡°ê±´ ê¸°ë°˜ íŒë³„ ë…¸ë“œ
-#include "SetBFMMode_SCISSORS.h" // SCISSORS ì¡°ê±´ ê¸°ë°˜ íŒë³„ ë…¸ë“œ
+#include "PredictManeuver.h" //Àû±âÀÇ À§Ä¡¿Í È¸Àü Á¤º¸¸¦ ÃÖ±Ù ÇÁ·¹ÀÓ¸¶´Ù ÀúÀå
+#include "EnergyCompare.h"  // Àû±â¿Í ³ªÀÇ energy Â÷ÀÌ ºñ±³
+#include "SetBFMMode_OBFM.h" // OBFM Á¶°Ç ±â¹İ ÆÇº° ³ëµå
+#include "SetBFMMode_DBFM.h" // DBFM Á¶°Ç ±â¹İ ÆÇº° ³ëµå
+#include "SetBFMMode_HABFM.h" // HABFM Á¶°Ç ±â¹İ ÆÇº° ³ëµå
+#include "SetBFMMode_SCISSORS.h" // SCISSORS Á¶°Ç ±â¹İ ÆÇº° ³ëµå

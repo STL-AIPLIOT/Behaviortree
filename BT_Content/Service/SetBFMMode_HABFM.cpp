@@ -7,13 +7,13 @@ using namespace Action;
 
 namespace
 {
-    constexpr double TURN_RATE_MARGIN_DEG_SEC = 2.0;        // 1C/2C ì „í™˜ ë°ë“œë°´ë“œ (deg/s)
-    constexpr double TURN_RATE_SAMPLE_SEC = 0.2;            // ì„ íšŒìœ¨ ê³„ì‚°ìš© ìµœì†Œ ìƒ˜í”Œ êµ¬ê°„ (sec)
-    constexpr double MAX_TURN_RATE_SAMPLE_SEC = 1.0;        // ìƒ˜í”Œ êµ¬ê°„ ìƒí•œ. ë‹¤ë¥¸ BFM ë¶„ê¸°ë¡œ tickì´ ëŠê¸´ ë’¤ì˜ ì˜¤ë˜ëœ í—¤ë”© ë¹„êµ ë°©ì§€ (sec)
-    constexpr double MIN_VALID_DT_SEC = 1e-6;               // 0 ë‚˜ëˆ—ì…ˆ ë°©ì§€ìš© ìµœì†Œ dt (sec)
-    constexpr double MAX_VALID_TURN_RATE_DEG_SEC = 90.0;    // ë¹„ì •ìƒ ì„ íšŒìœ¨(ìˆ˜ì§ ê¸°ë™ ì‹œ Yaw ê¸‰ë³€ ë“±) ë°°ì œìš© ìƒí•œ
+    constexpr double TURN_RATE_MARGIN_DEG_SEC = 2.0;        // 1C/2C ÀüÈ¯ µ¥µå¹êµå (deg/s)
+    constexpr double TURN_RATE_SAMPLE_SEC = 0.2;            // ¼±È¸À² °è»ê¿ë ÃÖ¼Ò »ùÇÃ ±¸°£ (sec)
+    constexpr double MAX_TURN_RATE_SAMPLE_SEC = 1.0;        // »ùÇÃ ±¸°£ »óÇÑ. ´Ù¸¥ BFM ºĞ±â·Î tickÀÌ ²÷±ä µÚÀÇ ¿À·¡µÈ Çìµù ºñ±³ ¹æÁö (sec)
+    constexpr double MIN_VALID_DT_SEC = 1e-6;               // 0 ³ª´°¼À ¹æÁö¿ë ÃÖ¼Ò dt (sec)
+    constexpr double MAX_VALID_TURN_RATE_DEG_SEC = 90.0;    // ºñÁ¤»ó ¼±È¸À²(¼öÁ÷ ±âµ¿ ½Ã Yaw ±Şº¯ µî) ¹èÁ¦¿ë »óÇÑ
 
-    // ê°ë„ ì°¨ì´ë¥¼ [-180, 180]ìœ¼ë¡œ ì ‘ìŒ (0~360 / -180~180 í‘œê¸° ëª¨ë‘ ëŒ€ì‘)
+    // °¢µµ Â÷ÀÌ¸¦ [-180, 180]À¸·Î Á¢À½ (0~360 / -180~180 Ç¥±â ¸ğµÎ ´ëÀÀ)
     double WrapDeltaDegree(double delta)
     {
         while (delta > 180.0)  delta -= 360.0;
@@ -21,7 +21,7 @@ namespace
         return delta;
     }
 
-    // í—¤ë”© ë³€í™”ëŸ‰(deg)ê³¼ ê²½ê³¼ ì‹œê°„(sec)ìœ¼ë¡œ ì„ íšŒìœ¨(deg/s)ì„ ê³„ì‚°. ìœ íš¨í•˜ì§€ ì•Šìœ¼ë©´ false
+    // Çìµù º¯È­·®(deg)°ú °æ°ú ½Ã°£(sec)À¸·Î ¼±È¸À²(deg/s)À» °è»ê. À¯È¿ÇÏÁö ¾ÊÀ¸¸é false
     bool CalculateTurnRateDegPerSec(double headingDeltaDegree, double dtSec, double& outputDegPerSec)
     {
         if (!std::isfinite(headingDeltaDegree) || !std::isfinite(dtSec) || dtSec <= MIN_VALID_DT_SEC)
@@ -36,9 +36,9 @@ namespace
 }
 
 /*
-ë‚´ ê¸°ì²´ / íƒ€ê²Ÿì˜ Yaw(deg) ë³€í™”ëŸ‰ì„ ì‹œë®¬ë ˆì´ì…˜ ì‹œê°„ìœ¼ë¡œ ë‚˜ëˆ„ì–´ ì„ íšŒìœ¨(deg/s)ì„ ê°±ì‹ 
-- ë¸”ë™ë³´ë“œì—ëŠ” ì„ íšŒ ë°˜ê²½/ê°ì†ë„ ê°’ì´ ì—†ìœ¼ë¯€ë¡œ í—¤ë”© ë³€í™” / dt ë°©ì‹ë§Œ ì‚¬ìš©
-- ê°’ì´ ë¹„ì •ìƒì´ê±°ë‚˜ ìƒ˜í”Œ êµ¬ê°„ì´ ëª¨ìë¼ë©´ ì§ì „ ì„ íšŒìœ¨ì„ ê·¸ëŒ€ë¡œ ìœ ì§€
+³» ±âÃ¼ / Å¸°ÙÀÇ Yaw(deg) º¯È­·®À» ½Ã¹Ä·¹ÀÌ¼Ç ½Ã°£À¸·Î ³ª´©¾î ¼±È¸À²(deg/s)À» °»½Å
+- ºí·¢º¸µå¿¡´Â ¼±È¸ ¹İ°æ/°¢¼Óµµ °ªÀÌ ¾øÀ¸¹Ç·Î Çìµù º¯È­ / dt ¹æ½Ä¸¸ »ç¿ë
+- °ªÀÌ ºñÁ¤»óÀÌ°Å³ª »ùÇÃ ±¸°£ÀÌ ¸ğÀÚ¶ó¸é Á÷Àü ¼±È¸À²À» ±×´ë·Î À¯Áö
 */
 void SetBFMMode_HABFM::UpdateTurnRates(CPPBlackBoard* BB)
 {
@@ -48,12 +48,12 @@ void SetBFMMode_HABFM::UpdateTurnRates(CPPBlackBoard* BB)
 
     if (!std::isfinite(now) || !std::isfinite(myYaw) || !std::isfinite(targetYaw))
     {
-        return;     //ì…ë ¥ì´ ë¹„ì •ìƒì´ë©´ ìƒíƒœë¥¼ ê±´ë“œë¦¬ì§€ ì•ŠìŒ
+        return;     //ÀÔ·ÂÀÌ ºñÁ¤»óÀÌ¸é »óÅÂ¸¦ °Çµå¸®Áö ¾ÊÀ½
     }
 
     const double dt = now - PrevSampleTime_Sec;
 
-    //ì²« tickì´ê±°ë‚˜, ì‹œë®¬ë ˆì´ì…˜ ì‹œê°„ì´ ë˜ê°ê²¼ê±°ë‚˜, tickì´ ì˜¤ë˜ ëŠê²¼ë˜ ê²½ìš° ê¸°ì¤€ì ë§Œ ë‹¤ì‹œ ì¡ìŒ
+    //Ã¹ tickÀÌ°Å³ª, ½Ã¹Ä·¹ÀÌ¼Ç ½Ã°£ÀÌ µÇ°¨°å°Å³ª, tickÀÌ ¿À·¡ ²÷°å´ø °æ¿ì ±âÁØÁ¡¸¸ ´Ù½Ã ÀâÀ½
     if (!HasPrevHeading || dt < 0.0 || dt > MAX_TURN_RATE_SAMPLE_SEC)
     {
         HasPrevHeading = true;
@@ -65,7 +65,7 @@ void SetBFMMode_HABFM::UpdateTurnRates(CPPBlackBoard* BB)
 
     if (dt < TURN_RATE_SAMPLE_SEC)
     {
-        return;     //ìƒ˜í”Œ êµ¬ê°„ ë¯¸ë‹¬. ì§ì „ ì„ íšŒìœ¨ ìœ ì§€
+        return;     //»ùÇÃ ±¸°£ ¹Ì´Ş. Á÷Àü ¼±È¸À² À¯Áö
     }
 
     double myRateDeg = 0.0;
@@ -82,7 +82,7 @@ void SetBFMMode_HABFM::UpdateTurnRates(CPPBlackBoard* BB)
 
     if (!valid)
     {
-        HasTurnRate = false;    //ìœ íš¨í•˜ì§€ ì•Šì€ ê°’ì€ íŒë‹¨ì— ì“°ì§€ ì•ŠìŒ (ì´ì „ ëª¨ë“œ ìœ ì§€)
+        HasTurnRate = false;    //À¯È¿ÇÏÁö ¾ÊÀº °ªÀº ÆÇ´Ü¿¡ ¾²Áö ¾ÊÀ½ (ÀÌÀü ¸ğµå À¯Áö)
         return;
     }
 
@@ -92,11 +92,11 @@ void SetBFMMode_HABFM::UpdateTurnRates(CPPBlackBoard* BB)
 }
 
 /*
-ì„ íšŒìœ¨ ë¹„êµë¡œ 1C/2C í™•ì •
-- ë‚´ ì„ íšŒìœ¨ ìš°ì„¸      : 2C
-- íƒ€ê²Ÿ ì„ íšŒìœ¨ ìš°ì„¸    : 1C
-- ì°¨ì´ê°€ ë°ë“œë°´ë“œ ì´ë‚´: ì´ì „ ëª¨ë“œ ìœ ì§€
-- ì„ íšŒìœ¨ì´ ìœ íš¨í•˜ì§€ ì•Šìœ¼ë©´ ì´ì „ ëª¨ë“œ ìœ ì§€ (ê°•ì œ ì „í™˜ ê¸ˆì§€)
+¼±È¸À² ºñ±³·Î 1C/2C È®Á¤
+- ³» ¼±È¸À² ¿ì¼¼      : 2C
+- Å¸°Ù ¼±È¸À² ¿ì¼¼    : 1C
+- Â÷ÀÌ°¡ µ¥µå¹êµå ÀÌ³»: ÀÌÀü ¸ğµå À¯Áö
+- ¼±È¸À²ÀÌ À¯È¿ÇÏÁö ¾ÊÀ¸¸é ÀÌÀü ¸ğµå À¯Áö (°­Á¦ ÀüÈ¯ ±İÁö)
 */
 void SetBFMMode_HABFM::UpdateCircleMode(CPPBlackBoard* BB)
 {
@@ -113,7 +113,7 @@ void SetBFMMode_HABFM::UpdateCircleMode(CPPBlackBoard* BB)
     {
         BB->HABFM_CircleMode = ONE_CIRCLE;
     }
-    //ë°ë“œë°´ë“œ ì´ë‚´ë©´ BB->HABFM_CircleModeë¥¼ ê·¸ëŒ€ë¡œ ë‘ 
+    //µ¥µå¹êµå ÀÌ³»¸é BB->HABFM_CircleMode¸¦ ±×´ë·Î µÒ
 }
 
 BT::NodeStatus SetBFMMode_HABFM::tick()
@@ -126,15 +126,15 @@ BT::NodeStatus SetBFMMode_HABFM::tick()
     }
     CPPBlackBoard* BB = bb_res.value();
 
-    //ì„ íšŒìœ¨ ìƒ˜í”Œë§ì€ HABFM ì§„ì… ì—¬ë¶€ì™€ ë¬´ê´€í•˜ê²Œ ë§¤ tick ê°±ì‹ 
+    //¼±È¸À² »ùÇÃ¸µÀº HABFM ÁøÀÔ ¿©ºÎ¿Í ¹«°üÇÏ°Ô ¸Å tick °»½Å
     UpdateTurnRates(BB);
 
     const bool sight = BB->EnemyInSight;
-    const double aa = BB->MyAspectAngle_Degree;   // 0: ê°™ì€ ë°©í–¥, 180: ì •ë°˜ëŒ€(í—¤ë“œì˜¨)
+    const double aa = BB->MyAspectAngle_Degree;   // 0: °°Àº ¹æÇâ, 180: Á¤¹İ´ë(Çìµå¿Â)
     const double D = BB->Distance;
-    const int    ec = BB->EnergyCompareResult;    // >=0 ê¶Œì¥
+    const int    ec = BB->EnergyCompareResult;    // >=0 ±ÇÀå
 
-    // [ê°œì„ ] HABFM ì§„ì… ì°½: |AA-180| <= 40Â°, 800m <= D <= 2000m, ì—ë„ˆì§€ â‰¥ 0, ì‹œì•¼ å¿…
+    // [°³¼±] HABFM ÁøÀÔ Ã¢: |AA-180| <= 40¡Æ, 800m <= D <= 2000m, ¿¡³ÊÁö ¡Ã 0, ½Ã¾ß ù±
     const bool aa_ok = (std::abs(aa - 180.0) <= 40.0);
     const bool dist_ok = (D >= 800.0 && D <= 2000.0);
     const bool e_ok = (ec >= 0);

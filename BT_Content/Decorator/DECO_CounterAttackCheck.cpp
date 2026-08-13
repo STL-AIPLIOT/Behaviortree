@@ -9,7 +9,7 @@ BT::NodeStatus DECO_CounterAttackCheck::tick()
 
     if (!bb_ptr)
     {
-        std::cerr << "[DECO_CounterAttackCheck] BB í¬ì¸í„° ê°€ì ¸ì˜¤ê¸° ì‹¤íŒ¨\n";
+        std::cerr << "[DECO_CounterAttackCheck] BB Æ÷ÀÎÅÍ °¡Á®¿À±â ½ÇÆÐ\n";
         return BT::NodeStatus::FAILURE;
     }
 
@@ -17,12 +17,12 @@ BT::NodeStatus DECO_CounterAttackCheck::tick()
 
     if (BB->IsCounterAttack)
     {
-        std::cout << "[DECO_CounterAttackCheck] ë°˜ê²© ì¡°ê±´ ë§Œì¡± â†’ í•˜ìœ„ ì‹¤í–‰\n";
+        std::cout << "[DECO_CounterAttackCheck] ¹Ý°Ý Á¶°Ç ¸¸Á· ¡æ ÇÏÀ§ ½ÇÇà\n";
         return child_node_->executeTick();
     }
     else
     {
-        std::cout << "[DECO_CounterAttackCheck] ë°˜ê²© ì¡°ê±´ ë¶ˆë§Œì¡± â†’ ì°¨ë‹¨\n";
+        std::cout << "[DECO_CounterAttackCheck] ¹Ý°Ý Á¶°Ç ºÒ¸¸Á· ¡æ Â÷´Ü\n";
         return BT::NodeStatus::FAILURE;
     }
 }

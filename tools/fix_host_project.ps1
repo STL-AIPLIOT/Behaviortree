@@ -29,19 +29,11 @@
   실제로 반영한다. 없으면 dry-run.
 
 .EXAMPLE
-  .\tools\fix_host_project.ps1
-  .\tools\fix_host_project.ps1 -SyncSources -Apply
-
-.NOTES
-  ATK 분기(2026-08-13): 기본 HostRoot 이 C:\AIP_LIB\AIP_DCS_ATK 다. 원본 호스트
-  (C:\AIP_LIB\AIP_DCS)를 가리키면 ATK 소스가 원본 빌드 트리로 들어간다.
-
-  ATK 호스트의 vcxproj 에는 OutDir/IntDir/TargetName 을 bin_atk\ 와 AIP_STIL_ATK 로
-  돌리는 PropertyGroup 이 하나 추가돼 있다. 이 스크립트는 그 블록을 건드리지 않지만,
-  vcxproj 를 원본에서 다시 복사해 오는 경우 그 블록도 함께 옮겨야 한다.
+  .\tools\fix_host_project.ps1 -HostRoot C:\AIP_LIB\AIP_DCS
+  .\tools\fix_host_project.ps1 -HostRoot C:\AIP_LIB\AIP_DCS -SyncSources -Apply
 #>
 param(
-    [string]$HostRoot = $(if ($env:AIP_DCS_ROOT) { $env:AIP_DCS_ROOT } else { "C:\AIP_LIB\AIP_DCS_ATK" }),
+    [string]$HostRoot = $(if ($env:AIP_DCS_ROOT) { $env:AIP_DCS_ROOT } else { "C:\AIP_LIB\AIP_DCS" }),
     [switch]$SyncSources,
     [switch]$Apply
 )

@@ -1,7 +1,7 @@
 #include "Task_MinimizeAngleOff.h"
 #include <algorithm>
 #include <cmath>
-#include <iostream> // ì½˜ì†” ë¡œê·¸
+#include <iostream> // ÄÜ¼Ö ·Î±×
 
 #ifndef DEG2RAD
 #define DEG2RAD 0.017453292519943295
@@ -32,28 +32,28 @@ namespace Action
     {
         Optional<CPPBlackBoard*> BB = getInput<CPPBlackBoard*>("BB");
         if (!BB) {
-            std::cout << "[MinimizeAngleOff] ì¡°ê±´ ë¯¸ì¶©ì¡± â†’ FAILURE (BB ì…ë ¥ ì‹¤íŒ¨)" << std::endl;
+            std::cout << "[MinimizeAngleOff] Á¶°Ç ¹ÌÃæÁ· ¡æ FAILURE (BB ÀÔ·Â ½ÇÆĞ)" << std::endl;
             return NodeStatus::FAILURE;
         }
         CPPBlackBoard* bb = *BB;
 
         if (bb->Enemy.empty()) {
-            std::cout << "[MinimizeAngleOff] ì¡°ê±´ ë¯¸ì¶©ì¡± â†’ FAILURE (ì ê¸° ì—†ìŒ)" << std::endl;
+            std::cout << "[MinimizeAngleOff] Á¶°Ç ¹ÌÃæÁ· ¡æ FAILURE (Àû±â ¾øÀ½)" << std::endl;
             return NodeStatus::FAILURE;
         }
 
-        // íƒ€ê²Ÿ í¬ì¦ˆ/ì „ë°©
+        // Å¸°Ù Æ÷Áî/Àü¹æ
         const PlaneInfo& tgt = bb->Enemy[0];
         Vector3 targetPos = tgt.Location;
 
-        Vector3 targetFwd = bb->TargetForwardVector; // ì„œë¹„ìŠ¤ ë…¸ë“œì—ì„œ ì´ë¯¸ ê³„ì‚°ë¨
+        Vector3 targetFwd = bb->TargetForwardVector; // ¼­ºñ½º ³ëµå¿¡¼­ ÀÌ¹Ì °è»êµÊ
         normalize(targetFwd);
         if (vecMag(targetFwd) < 1e-6f) {
-            std::cout << "[MinimizeAngleOff] ì¡°ê±´ ë¯¸ì¶©ì¡± â†’ FAILURE (íƒ€ê²Ÿ ì „ë°©ë²¡í„° ë¹„ì •ìƒ)" << std::endl;
+            std::cout << "[MinimizeAngleOff] Á¶°Ç ¹ÌÃæÁ· ¡æ FAILURE (Å¸°Ù Àü¹æº¤ÅÍ ºñÁ¤»ó)" << std::endl;
             return NodeStatus::FAILURE;
         }
 
-        // ë‚˜ì™€ íƒ€ê²Ÿ ê°„ ê±°ë¦¬
+        // ³ª¿Í Å¸°Ù °£ °Å¸®
         Vector3 myPos = bb->MyLocation_Cartesian;
         const float dx = targetPos.X - myPos.X;
         const float dy = targetPos.Y - myPos.Y;
@@ -74,27 +74,27 @@ namespace Action
         float angleDeg = std::acos(dot) * RAD2DEG;
         std::cout << "[MinimizeAngleOff] angleDeg=" << angleDeg << std::endl;
 
-        // íŒŒë¼ë¯¸í„°(ì—†ìœ¼ë©´ ê¸°ë³¸ê°’ ì‚¬ìš©)
+        // ÆÄ¶ó¹ÌÅÍ(¾øÀ¸¸é ±âº»°ª »ç¿ë)
         double lookMin = 200.0, lookMax = 500.0;
         if (auto v = getInput<double>("LookAheadMin")) lookMin = *v;
         if (auto v = getInput<double>("LookAheadMax")) lookMax = *v;
         if (lookMin > lookMax) std::swap(lookMin, lookMax);
 
-        // ê±°ë¦¬ ë¹„ë¡€ ì•ì§€ì  (ë„ˆë¬´ ë©€ë©´ ê³¼ë„, ë„ˆë¬´ ê°€ê¹Œìš°ë©´ ë¯¸ì•½í•˜ë‹ˆ clamp)
+        // °Å¸® ºñ·Ê ¾ÕÁöÁ¡ (³Ê¹« ¸Ö¸é °úµµ, ³Ê¹« °¡±î¿ì¸é ¹Ì¾àÇÏ´Ï clamp)
         const double raw = static_cast<double>(distance) * 0.20;
         const double look = (raw < lookMin) ? lookMin : (raw > lookMax ? lookMax : raw);
 
-        // íƒ€ê²Ÿì˜ ì „ë°©ìœ¼ë¡œ lookë§Œí¼ ì•ì§€ì ì„ ì¡°ì¤€
+        // Å¸°ÙÀÇ Àü¹æÀ¸·Î look¸¸Å­ ¾ÕÁöÁ¡À» Á¶ÁØ
         Vector3 VP;
         VP.X = targetPos.X + targetFwd.X * look;
         VP.Y = targetPos.Y + targetFwd.Y * look;
         VP.Z = targetPos.Z + targetFwd.Z * look;
 
-        // ì¡°ì¤€ì /ìŠ¤ë¡œí‹€ ì ìš©
+        // Á¶ÁØÁ¡/½º·ÎÆ² Àû¿ë
         bb->VP_Cartesian = VP;
-        bb->Throttle = 1.0f; // ì†ë„ ê´€ë¦¬ëŠ” ë³„ë„ CornerSpeed ë…¸ë“œì—ì„œ í•˜ë„ë¡
+        bb->Throttle = 1.0f; // ¼Óµµ °ü¸®´Â º°µµ CornerSpeed ³ëµå¿¡¼­ ÇÏµµ·Ï
 
-        std::cout << "[MinimizeAngleOff] Minimize AO ì‹¤í–‰!" << std::endl;
+        std::cout << "[MinimizeAngleOff] Minimize AO ½ÇÇà!" << std::endl;
 
         return NodeStatus::SUCCESS;
     }

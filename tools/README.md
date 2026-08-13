@@ -118,48 +118,7 @@ vcxproj 를 최초 1회 `.bak` 으로 백업한다.
   [OK] 팀   AIP_STIL.dll         (./Rule.xml)   nodes=45
   ```
 
-  다만 **로드된다는 것과 쓸 만하다는 것은 다르다.**
-
-- **`AIP_BASE_target.dll` 은 상대로 쓰지 마라 — 기동하지 않는다** (2026-08-12 실측).
-
-  `Rule_forTraining.xml` 의 행동 노드는 `Task_Empty` **둘뿐**이다. 거리로 분기해 놓고
-  양쪽 다 빈 태스크로 끝난다:
-
-  ```xml
-  <Fallback>
-    <Sequence><DECO_DistanceCheck UpDown="Greater" Distance="2000"/><Task_Empty/></Sequence>
-    <Sequence><DECO_DistanceCheck UpDown="Less"    Distance="2000"/><Task_Empty/></Sequence>
-  </Fallback>
-  ```
-
-  나머지 6종은 전부 정보 갱신 서비스라 **VP 를 쓰는 노드가 하나도 없다.** 60초 교전
-  실측에서 `|roll|` 중앙 **1.7°**, 초기 침로로 직진해 N 좌표가 5,990 → **−19,448 m**.
-  파일명 `forTraining` 그대로 학습용 정지 표적이다. **결함이 아니라 설계다.**
-
-  노드를 추가해 살릴 수도 없다 — 등록은 `Factory.registerNodeType<Action::X>("X")`
-  라는 C++ 코드인데 소스 없는 벤더 바이너리다. XML 만으로는 등록되지 않는다.
-
-- **기동하는 상대가 필요하면 팀 DLL 사본을 쓴다.**
-
-  ```powershell
-  Copy-Item C:\AIP_LIB\DogFightEnv\Release\AIP_STIL.dll `
-            C:\AIP_LIB\DogFightEnv\Release\AIP_STIL_target.dll
-  ```
-
-  파일명이 **달라야** 한다. `ctypes.cdll.LoadLibrary` 는 같은 경로면 같은 핸들을
-  돌려주므로, 양쪽 provider 에 `AIP_STIL.dll` 을 주면 BT 레지스트리를 공유해 한
-  인스턴스가 된다. 사본이면 핸들이 분리된다(실측 확인).
-
-  ```powershell
-  python run_local_dogfight.py --ownship-backend bt --ownship-bt-dll AIP_STIL.dll `
-      --target-backend bt --target-bt-dll AIP_STIL_target.dll --max-engage-time 60 --save-log
-  ```
-
-  20판 실측: 양쪽 다 기동(`|roll|` 중앙 76.0° / 54.4°), **피해 조건 충족 프레임 972,
-  20/20 판에서 상호 유효타**. 근거는 `Release/analysis/EXP/EXP-007_selfplay_opponent.md`.
-
-  > **DLL 을 새로 배포하면 사본도 같이 갱신하라.** 해시가 갈리면 대칭이 깨져 비교가
-  > 성립하지 않는다.
+  따라서 BT 상대 학습·평가에 `--target-bt-dll AIP_BASE_target.dll` 을 쓸 수 있다.
 
 - `/sdl` 이 C4996 을 error 로 올려서 `getenv` 를 쓰는 `PredictManeuverCsvLogger.cpp` /
   `LeadPursuitTelemetry.cpp` 가 빌드를 깬다. 스크립트가 `_CRT_SECURE_NO_WARNINGS` 를 넣어 해결한다.

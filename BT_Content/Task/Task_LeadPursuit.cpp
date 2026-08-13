@@ -2,7 +2,7 @@
 #include "LeadPursuitTelemetry.h"
 #include <algorithm>
 
-namespace Action {  // â˜… ì¶”ê°€
+namespace Action {  // ¡Ú Ãß°¡
 
     static inline float clampf(float v, float lo, float hi) {
         return std::max(lo, std::min(hi, v));
@@ -23,7 +23,7 @@ namespace Action {  // â˜… ì¶”ê°€
         }
         CPPBlackBoard* BB = bb_res.value();
 
-        // Timeout ì´í›„ ìž¬ì§„ìž…í•  ë•Œ ì§ì „ ì‹¤í–‰ ìƒíƒœê°€ ì´ì–´ì§€ì§€ ì•Šë„ë¡ í•­ìƒ ì´ˆê¸°í™”í•˜ê³  ì‹œìž‘í•œë‹¤.
+        // Timeout ÀÌÈÄ ÀçÁøÀÔÇÒ ¶§ Á÷Àü ½ÇÇà »óÅÂ°¡ ÀÌ¾îÁöÁö ¾Êµµ·Ï Ç×»ó ÃÊ±âÈ­ÇÏ°í ½ÃÀÛÇÑ´Ù.
         ResetInternalState();
 
         entry_time_sec_ = BB->RunningTime;
@@ -50,8 +50,8 @@ namespace Action {  // â˜… ì¶”ê°€
         const double elapsed = BB->RunningTime - entry_time_sec_;
 
         const float D = BB->Distance;
-        if (D < D_MIN) { // [ë³€ê²½] ê¸°ì¡´ê³¼ ë™ì¼í•œ ë¬´íš¨ ê¸°í•˜ ì¡°ê±´
-            // ë‹¤ìŒ Fallback ìžì‹ì—ê²Œ ì–‘ë³´í•œë‹¤. ì´ ë…¸ë“œê°€ ì“´ ì¶”ì¢…ì ì€ ë‚¨ê¸°ì§€ ì•ŠëŠ”ë‹¤.
+        if (D < D_MIN) { // [º¯°æ] ±âÁ¸°ú µ¿ÀÏÇÑ ¹«È¿ ±âÇÏ Á¶°Ç
+            // ´ÙÀ½ Fallback ÀÚ½Ä¿¡°Ô ¾çº¸ÇÑ´Ù. ÀÌ ³ëµå°¡ ¾´ ÃßÁ¾Á¡Àº ³²±âÁö ¾Ê´Â´Ù.
             if (vp_saved_) {
                 BB->VP_Cartesian = vp_on_entry_;
             }
@@ -61,11 +61,11 @@ namespace Action {  // â˜… ì¶”ê°€
         }
 
         const float tgt_spd = std::max(1.0f, BB->TargetSpeed_MS);
-        const float lead_time = std::max(0.3f, std::min(2.0f, D / tgt_spd)); // [ë³€ê²½]
+        const float lead_time = std::max(0.3f, std::min(2.0f, D / tgt_spd)); // [º¯°æ]
 
         BB->VP_Cartesian = BB->TargetLocaion_Cartesian + BB->PredictedTargetVelocity * lead_time;
 
-        // ì¶”ì¢… ëª©í‘œ ë‹¬ì„± íŒì •. í•œ í”„ë ˆìž„ ë–¨ë¦¼ìœ¼ë¡œ ì¦‰ì‹œ SUCCESS ê°€ ë˜ì§€ ì•Šë„ë¡ ìœ ì§€ ì‹œê°„ì„ ë³¸ë‹¤.
+        // ÃßÁ¾ ¸ñÇ¥ ´Þ¼º ÆÇÁ¤. ÇÑ ÇÁ·¹ÀÓ ¶³¸²À¸·Î Áï½Ã SUCCESS °¡ µÇÁö ¾Êµµ·Ï À¯Áö ½Ã°£À» º»´Ù.
         const float ao = BB->MyAngleOff_Degree;
 
         if (ao <= SETTLE_AO_DEG) {
@@ -74,7 +74,7 @@ namespace Action {  // â˜… ì¶”ê°€
             }
 
             if (BB->RunningTime - settle_since_sec_ >= SETTLE_DWELL_SEC) {
-                // ëª©í‘œ ë‹¬ì„±. ì¶”ì¢…ì (VP_Cartesian)ì€ ìœ íš¨í•œ ëª…ë ¹ì´ë¯€ë¡œ ê·¸ëŒ€ë¡œ ë‘”ë‹¤.
+                // ¸ñÇ¥ ´Þ¼º. ÃßÁ¾Á¡(VP_Cartesian)Àº À¯È¿ÇÑ ¸í·ÉÀÌ¹Ç·Î ±×´ë·Î µÐ´Ù.
                 LeadPursuitTelemetry::Instance().OnExit("SUCCESS", "SUCCESS", *BB, elapsed);
                 ResetInternalState();
                 return BT::NodeStatus::SUCCESS;
@@ -89,14 +89,14 @@ namespace Action {  // â˜… ì¶”ê°€
     }
 
     void Task_LeadPursuit::onHalted() {
-        // Timeout(Rule.xml:69) ë§Œë£Œ ì‹œ íƒ€ì´ë¨¸ ìŠ¤ë ˆë“œì—ì„œ haltChild() ë¥¼ ê±°ì³ ë“¤ì–´ì˜¨ë‹¤.
-        // decorators/timeout_node.cpp:77 -> decorator_node.cpp:53 -> ì—¬ê¸°.
+        // Timeout(Rule.xml:69) ¸¸·á ½Ã Å¸ÀÌ¸Ó ½º·¹µå¿¡¼­ haltChild() ¸¦ °ÅÃÄ µé¾î¿Â´Ù.
+        // decorators/timeout_node.cpp:77 -> decorator_node.cpp:53 -> ¿©±â.
         auto bb_res = getInput<CPPBlackBoard*>("BB");
 
         if (bb_res && vp_saved_) {
             CPPBlackBoard* BB = bb_res.value();
 
-            // ì¤‘ë‹¨ëœ ê¸°ë™ì˜ ì¶”ì¢…ì ì´ ë‚¨ì•„ ë‹¤ìŒ ìžì‹ì˜ ëª…ë ¹ê³¼ ì„žì´ì§€ ì•Šê²Œ ë˜ëŒë¦°ë‹¤.
+            // Áß´ÜµÈ ±âµ¿ÀÇ ÃßÁ¾Á¡ÀÌ ³²¾Æ ´ÙÀ½ ÀÚ½ÄÀÇ ¸í·É°ú ¼¯ÀÌÁö ¾Ê°Ô µÇµ¹¸°´Ù.
             BB->VP_Cartesian = vp_on_entry_;
 
             LeadPursuitTelemetry::Instance().OnExit(

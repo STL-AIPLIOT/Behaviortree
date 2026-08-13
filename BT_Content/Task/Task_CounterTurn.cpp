@@ -12,33 +12,33 @@ BT::NodeStatus Task_CounterTurn::tick()
     auto bb_res = getInput<CPPBlackBoard*>("BB");
     if (!bb_res)
     {
-        std::cerr << "[Task_CounterTurn] BB í¬ì¸í„° ê°€ì ¸ì˜¤ê¸° ì‹¤íŒ¨\n";
+        std::cerr << "[Task_CounterTurn] BB Æ÷ÀÎÅÍ °¡Á®¿À±â ½ÇÆĞ\n";
         return BT::NodeStatus::FAILURE;
     }
 
     CPPBlackBoard* BB = bb_res.value();
 
-    // ìƒí™© ë³€ìˆ˜
+    // »óÈ² º¯¼ö
     const float D = BB->Distance;                 // m
-    const float dv = BB->TargetSpeed_MS - BB->MySpeed_MS; // ì -ì•„êµ° ì†ë„ì°¨
-    const int   ecmp = BB->EnergyCompareResult;      // >0 ìš°ì„¸, <0 ì—´ì„¸
+    const float dv = BB->TargetSpeed_MS - BB->MySpeed_MS; // Àû-¾Æ±º ¼ÓµµÂ÷
+    const int   ecmp = BB->EnergyCompareResult;      // >0 ¿ì¼¼, <0 ¿­¼¼
 
-    // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ ì˜¤í”„ì…‹ í¬ê¸° ì •ì±… â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-    // Counter-Turn: ìƒëŒ€ ì§„í–‰ ë°©í–¥ì„ "ë²—ì–´ë‚˜ë©°" ë‹¤ìŒ í„´ ì—¬ìœ ë¥¼ ë§Œë“¦.
-    // ê°€ê¹Œìš¸ìˆ˜ë¡ ì‘ì€ ì¸¡ë°©, ë©€ìˆ˜ë¡ í¬ê²Œ. ë„ˆë¬´ ê³¼ë„í•œ ì´ë™ì€ í´ë¨í”„.
-    float side = clampf(250.0f + 0.5f * D, 300.0f, 800.0f); // ì¢Œ/ìš° ì´íƒˆ í¬ê¸°
-    // ì†ë„ì°¨(ì ì´ ë¹ ë¦„)ê°€ í¬ë©´ ì•½ê°„ ë” í¬ê²Œ
+    // ¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡ ¿ÀÇÁ¼Â Å©±â Á¤Ã¥ ¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡
+    // Counter-Turn: »ó´ë ÁøÇà ¹æÇâÀ» "¹ş¾î³ª¸ç" ´ÙÀ½ ÅÏ ¿©À¯¸¦ ¸¸µê.
+    // °¡±î¿ï¼ö·Ï ÀÛÀº Ãø¹æ, ¸Ö¼ö·Ï Å©°Ô. ³Ê¹« °úµµÇÑ ÀÌµ¿Àº Å¬·¥ÇÁ.
+    float side = clampf(250.0f + 0.5f * D, 300.0f, 800.0f); // ÁÂ/¿ì ÀÌÅ» Å©±â
+    // ¼ÓµµÂ÷(ÀûÀÌ ºü¸§)°¡ Å©¸é ¾à°£ ´õ Å©°Ô
     if (dv > 8.0f) side = clampf(side * 1.15f, 300.0f, 850.0f);
 
-    // ê·¼ì ‘ ì‹œ(ì´ˆê·¼ì ‘) ê³¼ì¡°ì‘ ë°©ì§€: ì¸¡ë°©ì„ ë‚®ì¶¤
+    // ±ÙÁ¢ ½Ã(ÃÊ±ÙÁ¢) °úÁ¶ÀÛ ¹æÁö: Ãø¹æÀ» ³·Ãã
     if (D < 250.0f) side = clampf(side, 300.0f, 450.0f);
 
-    // ì‚´ì§ ë’¤ë¡œ ë¬¼ëŸ¬ë‚˜ëŠ” ì„±ë¶„(ê³¼ë¦¬ë“œ ë°©ì§€): ì—ë„ˆì§€ ì—´ì„¸ì¼ìˆ˜ë¡ ì¡°ê¸ˆ ë” í›„í‡´
+    // »ìÂ¦ µÚ·Î ¹°·¯³ª´Â ¼ººĞ(°ú¸®µå ¹æÁö): ¿¡³ÊÁö ¿­¼¼ÀÏ¼ö·Ï Á¶±İ ´õ ÈÄÅğ
     float back = (ecmp < 0 ? 180.0f : 120.0f);
     back = clampf(back, 80.0f, 220.0f);
 
-    // ì˜¤ë¥¸ìª½ ê¸°ì¤€ Counter-Turn (XMLì— ì¢Œ/ìš° ëª…ì‹œ ì—†ìœ¼ë¯€ë¡œ ì¼ê´€ëœ ë°©í–¥ ì‚¬ìš©)
-    Vector3 offset = BB->TargetRightVector * side - BB->TargetForwardVector * back; // [ë³€ê²½]
+    // ¿À¸¥ÂÊ ±âÁØ Counter-Turn (XML¿¡ ÁÂ/¿ì ¸í½Ã ¾øÀ¸¹Ç·Î ÀÏ°üµÈ ¹æÇâ »ç¿ë)
+    Vector3 offset = BB->TargetRightVector * side - BB->TargetForwardVector * back; // [º¯°æ]
 
     BB->VP_Cartesian = BB->MyLocation_Cartesian + offset;
 

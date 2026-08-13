@@ -30,19 +30,14 @@
     .\tools\sync_rule_xml.ps1 -Apply
 
 .NOTES
-    ATK 분기(2026-08-13): 이 저장소는 공격형 실험 브랜치라 원본과 경로가 분리돼 있다.
-    (3) 은 Release 루트의 Rule.xml 이 아니라 **Rule_ATK.xml** 이다. 원본 트리가 쓰는
-    Rule.xml 을 덮으면 A/B 비교가 깨지므로 여기서는 절대 건드리지 않는다.
-
-    init() 은 파일명을 하드코딩하지 않는다. 환경변수 BT_RULE_XML 이 있으면 그 경로를
-    쓰고, 없으면 "./Rule.xml" 이다. 그래서 두 XML 이 한 루트에 공존할 수 있다.
+    Release 루트의 Rule.xml 은 이름을 바꾸거나 옮기지 않는다.
+    init() 이 createTreeFromFile("./Rule.xml") 로 파일명을 하드코딩하므로
+    그 루트에는 Rule.xml 이 하나만 존재할 수 있다.
 #>
 [CmdletBinding()]
 param(
-    [string]$HostRoot   = $(if ($env:AIP_DCS_ROOT) { $env:AIP_DCS_ROOT } else { "C:\AIP_LIB\AIP_DCS_ATK" }),
+    [string]$HostRoot   = $(if ($env:AIP_DCS_ROOT) { $env:AIP_DCS_ROOT } else { "C:\AIP_LIB\AIP_DCS" }),
     [string]$ReleaseDir = "C:\AIP_LIB\DogFightEnv\Release",
-    # Release 루트에 놓이는 이름. 저장소 안에서는 원본과 diff 가 되도록 Rule.xml 그대로다.
-    [string]$RuleXmlName = "Rule_ATK.xml",
     # 팀 저장소 루트. 비우면 이 스크립트의 부모(= Behaviortree\)를 쓴다.
     # param 블록 기본값에서 $PSScriptRoot 는 호출 방식에 따라 비어 있을 수 있어
     # 여기서 계산하지 않고 본문에서 채운다.
@@ -71,7 +66,7 @@ function Get-NodeCount([string]$path) {
 
 $team    = Join-Path $TeamRoot   "Rule.xml"
 $build   = Join-Path $HostRoot   "BehaviorTree\Rule.xml"
-$runtime = Join-Path $ReleaseDir $RuleXmlName
+$runtime = Join-Path $ReleaseDir "Rule.xml"
 
 if (-not (Test-Path $team)) { throw "팀 Rule.xml 이 없다: $team" }
 
@@ -152,9 +147,8 @@ if (-not $ok) { throw "복사 후에도 해시가 다르다. 파일 잠김이나
 # 배포한 XML 과 실제 DLL 을 대조해 그 조합을 미리 잡는다.
 if (-not $SkipGate) {
     $gate = Join-Path $scriptDir "bt_node_gate.py"
-    # ATK 분기: 대조 대상은 ATK DLL 뿐이다. 원본 AIP_STIL.dll 은 Rule.xml 을 읽으므로
-    # Rule_ATK.xml 과 대조하면 근거 없는 FAIL 이 난다.
-    $dlls = @(Get-ChildItem -Path $ReleaseDir -Filter "AIP_STIL_ATK*.dll" -File -ErrorAction SilentlyContinue)
+    $dlls = @(Get-ChildItem -Path $ReleaseDir -Filter "AIP_*.dll" -File -ErrorAction SilentlyContinue |
+              Where-Object { $_.Name -notlike "AIP_BASE*" })
     if ((Test-Path $gate) -and $dlls.Count -gt 0) {
         Write-Host ""
         Write-Host "노드 정합 검사"

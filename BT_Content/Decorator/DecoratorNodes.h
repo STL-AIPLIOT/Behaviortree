@@ -4,6 +4,6 @@
 #include "DECO_LOSCheck.h"
 #include "DECO_AngleOffCheck.h"
 
-#include "DECO_AltitudeCheck.h" //ì „íˆ¬ê¸°ì˜ ê³ ë„ê°€ 1000ft ì´ìƒì¸ì§€ë¥¼ íŒë‹¨
-#include "DECO_CounterAttackCheck.h" // DBFM ë°˜ê²© ê´€ë ¨ ì¹´ìš´í„° ê³µê²©
+#include "DECO_AltitudeCheck.h" //ÀüÅõ±âÀÇ °íµµ°¡ 1000ft ÀÌ»óÀÎÁö¸¦ ÆÇ´Ü
+#include "DECO_CounterAttackCheck.h" // DBFM ¹İ°İ °ü·Ã Ä«¿îÅÍ °ø°İ
 #include "DECO_CanRetry.h" // CanRetry : next-tick bounded retry decorator

@@ -28,49 +28,49 @@ namespace Action {
         const Vector3 up = BB->MyUpVector;
         const Vector3 right = BB->MyRightVector;
 
-        // ê·¼ì‚¬ ê°•í•˜ìœ¨: ì „ë°©ë²¡í„° Zì„±ë¶„ Ã— ì†ë„
+        // ±Ù»ç °­ÇÏÀ²: Àü¹æº¤ÅÍ Z¼ººĞ ¡¿ ¼Óµµ
         const float Vz_est = float(fwd.Z) * BB->MySpeed_MS;
         const float pitch_deg = std::asin(clampf(float(fwd.Z), -1.0f, 1.0f)) * 57.29578f;
 
-        // ì•ˆì „ê³ ë„(ft ë˜ëŠ” m, í”„ë¡œì íŠ¸ ë‹¨ìœ„ì— ë§ì¶”ì„¸ìš”)
+        // ¾ÈÀü°íµµ(ft ¶Ç´Â m, ÇÁ·ÎÁ§Æ® ´ÜÀ§¿¡ ¸ÂÃß¼¼¿ä)
         const float kFloor = 1200.0f;
         const float margin = 200.0f;
         const float curZ = float(myPos.Z);
 
-        // ---- í•µì‹¬ 1: "ìˆ˜í‰ ì „ë°©"ì„ ë§Œë“¤ì–´ Z ìŒìˆ˜ ê¸°ì—¬ ì œê±° ----
-        // fwd_h = fwd - up * dot(fwd,up)  (ìˆ˜í‰ë©´ìœ¼ë¡œ íˆ¬ì˜ í›„ ì •ê·œí™”)
+        // ---- ÇÙ½É 1: "¼öÆò Àü¹æ"À» ¸¸µé¾î Z À½¼ö ±â¿© Á¦°Å ----
+        // fwd_h = fwd - up * dot(fwd,up)  (¼öÆò¸éÀ¸·Î Åõ¿µ ÈÄ Á¤±ÔÈ­)
         float dot_fu = float(fwd.X * up.X + fwd.Y * up.Y + fwd.Z * up.Z);
         Vector3 fwd_h = fwd - up * dot_fu;
         float mag = length3(fwd_h);
         if (mag < 1e-3f) {
-            // ì „ë°©ì´ ê±°ì˜ ìœ„/ì•„ë˜ë¡œ í–¥í•˜ë©´ ìˆ˜í‰ ì „ë°©ì„ Rightë¡œ ëŒ€ì²´
+            // Àü¹æÀÌ °ÅÀÇ À§/¾Æ·¡·Î ÇâÇÏ¸é ¼öÆò Àü¹æÀ» Right·Î ´ëÃ¼
             fwd_h = right;
             mag = length3(fwd_h);
             if (mag < 1e-3f) {
-                // í˜¹ì‹œ ëª¨ë¥¼ íŠ¹ì´ ì¼€ì´ìŠ¤
+                // È¤½Ã ¸ğ¸¦ Æ¯ÀÌ ÄÉÀÌ½º
                 fwd_h = Vector3{ 1,0,0 };
                 mag = 1.0f;
             }
         }
-        fwd_h = fwd_h * (1.0f / mag); // ì •ê·œí™”
+        fwd_h = fwd_h * (1.0f / mag); // Á¤±ÔÈ­
 
-        // ---- ì˜¤í”„ì…‹ í¬ê¸°: ì†ë„ ê¸°ë°˜ ê°€ë³€ ----
-        const float spd = std::max(50.0f, BB->MySpeed_MS); // ì•ˆì „ í•˜í•œ
+        // ---- ¿ÀÇÁ¼Â Å©±â: ¼Óµµ ±â¹İ °¡º¯ ----
+        const float spd = std::max(50.0f, BB->MySpeed_MS); // ¾ÈÀü ÇÏÇÑ
         const float ahead = clampf(150.0f + 1.2f * spd, 200.0f, 600.0f);
         const float climb = clampf(200.0f + 0.6f * spd, 250.0f, 800.0f);
 
-        // ---- ëª©í‘œì : "ìˆ˜í‰ ì „ë°© + ìˆœìˆ˜ ìƒìŠ¹" â†’ ZëŠ” ì–¸ì œë‚˜ ì¦ê°€ ----
+        // ---- ¸ñÇ¥Á¡: "¼öÆò Àü¹æ + ¼ø¼ö »ó½Â" ¡æ Z´Â ¾ğÁ¦³ª Áõ°¡ ----
         Vector3 vp = myPos + fwd_h * ahead + up * climb;
 
-        // ---- BFM ì°¨ë‹¨(ì„ íƒì ì´ì§€ë§Œ ê°•ë ¥ ì¶”ì²œ): íšŒë³µ ì¤‘ì—” ë‹¤ë¥¸ BFM ë£¨íŠ¸ ì§„ì… ë°©ì§€ ----
-        // DECO_BFMCheckë“¤ì´ BB->BFMì„ ê²€ì‚¬í•˜ë¯€ë¡œ NONEìœ¼ë¡œ ë¹„ì›Œë‘ë©´ ëŒ€ë¶€ë¶„ ì „ëµì´ ì°¨ë‹¨ë¨
+        // ---- BFM Â÷´Ü(¼±ÅÃÀûÀÌÁö¸¸ °­·Â ÃßÃµ): È¸º¹ Áß¿£ ´Ù¸¥ BFM ·çÆ® ÁøÀÔ ¹æÁö ----
+        // DECO_BFMCheckµéÀÌ BB->BFMÀ» °Ë»çÇÏ¹Ç·Î NONEÀ¸·Î ºñ¿öµÎ¸é ´ëºÎºĞ Àü·«ÀÌ Â÷´ÜµÊ
         BB->BFM = NONE;
 
-        // ---- ìŠ¤ë¡œí‹€/VP ì ìš© ----
+        // ---- ½º·ÎÆ²/VP Àû¿ë ----
         BB->VP_Cartesian = vp;
         BB->Throttle = 1.0f;
 
-        // ---- ì¢…ë£Œ ì¡°ê±´: ì¶©ë¶„íˆ ì•ˆì „í•´ì¡ŒëŠ”ê°€? ----
+        // ---- Á¾·á Á¶°Ç: ÃæºĞÈ÷ ¾ÈÀüÇØÁ³´Â°¡? ----
         const bool safe_alt = (curZ >= (kFloor + margin));
         const bool good_pitch = (pitch_deg >= 2.0f);
         const bool climbing = (Vz_est > 5.0f);
@@ -83,12 +83,12 @@ namespace Action {
             << " | safe=" << (safe_alt && good_pitch && climbing ? "YES" : "NO")
             << "\n";
 
-        // ---- í•µì‹¬ 2: íšŒë³µ ì™„ë£Œ ì „ì—ëŠ” RUNNING ìœ ì§€ (ë‹¤ë¥¸ ë£¨íŠ¸ ì‹¤í–‰ ë°©ì§€) ----
+        // ---- ÇÙ½É 2: È¸º¹ ¿Ï·á Àü¿¡´Â RUNNING À¯Áö (´Ù¸¥ ·çÆ® ½ÇÇà ¹æÁö) ----
         if (safe_alt && good_pitch && climbing) {
-            return NodeStatus::SUCCESS;   // ì´ì œ ë‹¤ë¥¸ íŠ¸ë¦¬ë¡œ ëŒì•„ê°€ë„ ì•ˆì „
+            return NodeStatus::SUCCESS;   // ÀÌÁ¦ ´Ù¸¥ Æ®¸®·Î µ¹¾Æ°¡µµ ¾ÈÀü
         }
         else {
-            return NodeStatus::RUNNING;   // íšŒë³µ ê³„ì†: ê°™ì€ ë…¸ë“œê°€ ìš°ì„ ê¶Œì„ ìœ ì§€
+            return NodeStatus::RUNNING;   // È¸º¹ °è¼Ó: °°Àº ³ëµå°¡ ¿ì¼±±ÇÀ» À¯Áö
         }
     }
 

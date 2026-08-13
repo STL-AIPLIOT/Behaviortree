@@ -13,32 +13,32 @@ BT::NodeStatus SetBFMMode_DBFM::tick()
     auto bb_ptr = getInput<CPPBlackBoard*>("BB");
     if (!bb_ptr)
     {
-        std::cerr << "[SetBFMMode_DBFM] BB í¬ì¸í„° ê°€ì ¸ì˜¤ê¸° ì‹¤íŒ¨\n";
+        std::cerr << "[SetBFMMode_DBFM] BB Æ÷ÀÎÅÍ °¡Á®¿À±â ½ÇÆĞ\n";
         return BT::NodeStatus::FAILURE;
     }
 
     CPPBlackBoard* BB = bb_ptr.value();
 
-    // === ì…ë ¥ (ì´ë¯¸ BBì— ì¡´ì¬í•œë‹¤ê³  ê°€ì •; ì´ë¦„ì€ ì—…ë¡œë“œ íŒŒì¼ ê¸°ì¤€) ===
+    // === ÀÔ·Â (ÀÌ¹Ì BB¿¡ Á¸ÀçÇÑ´Ù°í °¡Á¤; ÀÌ¸§Àº ¾÷·Îµå ÆÄÀÏ ±âÁØ) ===
     const bool sight = BB->EnemyInSight;
-    const float los_deg = BB->Los_Degree_Target;      // ëª©í‘œ ê¸°ì¤€ ì‹œì„ ê°(ê°€ì •: ì‘ì„ìˆ˜ë¡ ì •ë©´)
+    const float los_deg = BB->Los_Degree_Target;      // ¸ñÇ¥ ±âÁØ ½Ã¼±°¢(°¡Á¤: ÀÛÀ»¼ö·Ï Á¤¸é)
     const float D = BB->Distance;
-    const float AA = BB->MyAspectAngle_Degree;        // ì¡´ì¬ ì‹œ ì‚¬ìš© (ì—†ìœ¼ë©´ 999ë¡œ ë³¸ë‹¤)
-    const int   energy_cmp = BB->EnergyCompareResult; // >0: ìš°ì„¸, 0: ë™ë“±, <0: ì—´ì„¸
+    const float AA = BB->MyAspectAngle_Degree;        // Á¸Àç ½Ã »ç¿ë (¾øÀ¸¸é 999·Î º»´Ù)
+    const int   energy_cmp = BB->EnergyCompareResult; // >0: ¿ì¼¼, 0: µ¿µî, <0: ¿­¼¼
 
-    // === DBFM ì§„ì… ì°½ ===
-    // - ì‹œì•¼ í™•ë³´
-    // - ê±°ë¦¬: ë„ˆë¬´ ë©€ë©´(>1500) ì§„ì…X, ë„ˆë¬´ ê°€ê¹Œìš°ë©´(ì˜ˆ: <200) ë³„ë„ ë°©ì–´ ìŠ¤í… í•„ìš”
-    // - ì •ë©´ êµì „/í—¤ë“œì˜¨ì´ ì•„ë‹Œ ê²½ìš°(LOS ê°ë„ê°€ ë„ˆë¬´ ì‘ì§€ ì•Šë„ë¡ ì™„í™”)
+    // === DBFM ÁøÀÔ Ã¢ ===
+    // - ½Ã¾ß È®º¸
+    // - °Å¸®: ³Ê¹« ¸Ö¸é(>1500) ÁøÀÔX, ³Ê¹« °¡±î¿ì¸é(¿¹: <200) º°µµ ¹æ¾î ½ºÅÜ ÇÊ¿ä
+    // - Á¤¸é ±³Àü/Çìµå¿ÂÀÌ ¾Æ´Ñ °æ¿ì(LOS °¢µµ°¡ ³Ê¹« ÀÛÁö ¾Êµµ·Ï ¿ÏÈ­)
     const bool dist_ok = (D >= 200.0f && D <= 1500.0f);
-    const bool los_ok = (los_deg >= 15.0f); // 0~10ë„ëŠ” ê±°ì˜ ì •ë©´ â†’ DBFM ì§„ì… ì–µì œ
+    const bool los_ok = (los_deg >= 15.0f); // 0~10µµ´Â °ÅÀÇ Á¤¸é ¡æ DBFM ÁøÀÔ ¾ïÁ¦
 
     if (sight && dist_ok && los_ok)
     {
         BB->BFM = DBFM;
 
-        // === ë°˜ê²© ëª¨ë“œ ì¡°ê±´ ===
-        // ì—ë„ˆì§€ ìš°ì„¸ + (ê¸°í•˜ ì°½) : ë„ˆë¬´ ê°€ê¹ì§€ ì•Šê³ (Anti-overshoot ìœ„í—˜), ê°ë„ ê³¼ëŒ€ ì•„ë‹˜
+        // === ¹İ°İ ¸ğµå Á¶°Ç ===
+        // ¿¡³ÊÁö ¿ì¼¼ + (±âÇÏ Ã¢) : ³Ê¹« °¡±õÁö ¾Ê°í(Anti-overshoot À§Çè), °¢µµ °ú´ë ¾Æ´Ô
         bool geom_ok = (D >= 350.0f && D <= 1000.0f) && (AA < 60.0f);
         BB->IsCounterAttack = (energy_cmp > 0) && geom_ok;
 
@@ -49,7 +49,7 @@ BT::NodeStatus SetBFMMode_DBFM::tick()
         return BT::NodeStatus::SUCCESS;
     }
 
-    // ì§„ì… ì‹¤íŒ¨ ì‚¬ìœ  ë¡œê·¸
+    // ÁøÀÔ ½ÇÆĞ »çÀ¯ ·Î±×
     std::cout << "[SetBFMMode_DBFM] t=" << BB->RunningTime << "s | Blocked"
         << " | sight=" << sight
         << ", D=" << D << ", LOS=" << los_deg

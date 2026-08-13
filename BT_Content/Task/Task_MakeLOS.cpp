@@ -1,7 +1,7 @@
 #include "Task_MakeLOS.h"
 #include <cmath>
 #include <algorithm> // std::clamp
-#include <iostream>  //  ì½˜ì†” ë¡œê·¸
+#include <iostream>  //  ÄÜ¼Ö ·Î±×
 
 #ifndef DEG2RAD
 #define DEG2RAD 0.017453292519943295
@@ -18,19 +18,19 @@ PortsList Action::Task_MakeLOS::providedPorts() {
     return { InputPort<CPPBlackBoard*>("BB") };
 }
 
-// --- ì„ íƒ: ë””ë²„ê·¸ ë¡œê·¸ë¥¼ ì›í•˜ë©´ ë§¤í¬ë¡œ í™œì„±í™” ---
+// --- ¼±ÅÃ: µğ¹ö±× ·Î±×¸¦ ¿øÇÏ¸é ¸ÅÅ©·Î È°¼ºÈ­ ---
 // #define MAKELOS_DEBUG 1
 
 NodeStatus Action::Task_MakeLOS::tick() {
     Optional<CPPBlackBoard*> BB = getInput<CPPBlackBoard*>("BB");
     if (!BB) {
-        std::cout << "[MakeLOS] ì¡°ê±´ ë¯¸ì¶©ì¡± â†’ FAILURE (BB ì…ë ¥ ì‹¤íŒ¨)" << std::endl;
+        std::cout << "[MakeLOS] Á¶°Ç ¹ÌÃæÁ· ¡æ FAILURE (BB ÀÔ·Â ½ÇÆĞ)" << std::endl;
         return NodeStatus::FAILURE;
     }
     CPPBlackBoard* bb = *BB;
 
     if (!bb || bb->Enemy.empty()) {
-        std::cout << "[MakeLOS] ì¡°ê±´ ë¯¸ì¶©ì¡± â†’ FAILURE (ì ê¸° ì—†ìŒ)" << std::endl;
+        std::cout << "[MakeLOS] Á¶°Ç ¹ÌÃæÁ· ¡æ FAILURE (Àû±â ¾øÀ½)" << std::endl;
         return NodeStatus::FAILURE;
     }
 
@@ -47,44 +47,44 @@ NodeStatus Action::Task_MakeLOS::tick() {
 
 
     if (distance <= 1e-4f) {
-        std::cout << "[MakeLOS] ì¡°ê±´ ë¯¸ì¶©ì¡± â†’ FAILURE (ê±°ë¦¬=0)" << std::endl;
+        std::cout << "[MakeLOS] Á¶°Ç ¹ÌÃæÁ· ¡æ FAILURE (°Å¸®=0)" << std::endl;
         return NodeStatus::FAILURE;
     }
 
-    // íƒ€ê¹ƒì„ í–¥í•œ ë‹¨ìœ„ ë²¡í„°(LOS)
+    // Å¸±êÀ» ÇâÇÑ ´ÜÀ§ º¤ÅÍ(LOS)
     const Vector3 toTarget = { dx / distance, dy / distance, dz / distance };
 
-    // ë‚´ ì „ë°©ë²¡í„° ì •ê·œí™”(ë™ì  ë³´ê°„ ì•ŒíŒŒ ê³„ì‚°ìš©)
+    // ³» Àü¹æº¤ÅÍ Á¤±ÔÈ­(µ¿Àû º¸°£ ¾ËÆÄ °è»ê¿ë)
     Vector3 myForward = bb->MyForwardVector;
     float fmag = std::sqrt(myForward.X * myForward.X + myForward.Y * myForward.Y + myForward.Z * myForward.Z);
     if (fmag > 1e-6f) {
         myForward.X /= fmag; myForward.Y /= fmag; myForward.Z /= fmag;
     }
     else {
-        // í´ë°±: ì „ë°©ì´ ë¹„ì •ìƒì´ë©´ LOSë¥¼ ì‚¬ìš©í•´ ê³¼ë„ ì¡°í–¥ ë°©ì§€
+        // Æú¹é: Àü¹æÀÌ ºñÁ¤»óÀÌ¸é LOS¸¦ »ç¿ëÇØ °úµµ Á¶Çâ ¹æÁö
         myForward = toTarget;
     }
 
-    // ê°ë„(ì „ë°© vs LOS). dot ë³´í˜¸ëŠ” ë°˜ë“œì‹œ [-1,1].
+    // °¢µµ(Àü¹æ vs LOS). dot º¸È£´Â ¹İµå½Ã [-1,1].
     float dot = myForward.X * toTarget.X + myForward.Y * toTarget.Y + myForward.Z * toTarget.Z;
     dot = (dot < -1.0f) ? -1.0f : (dot > 1.0f ? 1.0f : dot);
     float angleDeg = std::acos(dot) * RAD2DEG;
 
     std::cout << "[MakeLOS] angleDeg=" << angleDeg << std::endl;
 
-    // === í•µì‹¬ ì •ì±… ===
-    // MakeLOSëŠ” "ìˆœìˆ˜ ì •ë ¬"ë§Œ ìˆ˜í–‰: í•­ìƒ íƒ€ê¹ƒ ê·¸ ìì²´ë¥¼ ë°”ë¼ë³´ê²Œ í•¨.
-    // (ë¦¬ë“œ/ì•ì§€ì  ê³„ì‚°ì€ Task_LeadPursuitì—ì„œ ë‹´ë‹¹)
+    // === ÇÙ½É Á¤Ã¥ ===
+    // MakeLOS´Â "¼ø¼ö Á¤·Ä"¸¸ ¼öÇà: Ç×»ó Å¸±ê ±× ÀÚÃ¼¸¦ ¹Ù¶óº¸°Ô ÇÔ.
+    // (¸®µå/¾ÕÁöÁ¡ °è»êÀº Task_LeadPursuit¿¡¼­ ´ã´ç)
     Vector3 targetVP = targetPos;
 
-    // === ìŠ¤ë¬´ë”©(ë–¨ë¦¼ ì™„í™”) ===
-    // ê°ë„ê°€ í´ìˆ˜ë¡ ë¹ ë¥´ê²Œ ë”°ë¼ê°€ê³ , ì‘ì„ìˆ˜ë¡ ë¶€ë“œëŸ½ê²Œ ê³ ì •ë˜ë„ë¡ ì•ŒíŒŒë¥¼ ë™ì ìœ¼ë¡œ ì¡°ì •
+    // === ½º¹«µù(¶³¸² ¿ÏÈ­) ===
+    // °¢µµ°¡ Å¬¼ö·Ï ºü¸£°Ô µû¶ó°¡°í, ÀÛÀ»¼ö·Ï ºÎµå·´°Ô °íÁ¤µÇµµ·Ï ¾ËÆÄ¸¦ µ¿ÀûÀ¸·Î Á¶Á¤
     // alpha = base + k*(angle/limit), clamp to [min,max]
 
     /*
-    const float baseAlpha = 0.15f;      // ìµœì†Œ ì¶”ì¢… ì†ë„
-    const float angleForMax = 30.0f;    // 30Â° ì´ìƒì´ë©´ ìµœëŒ€ ì•ŒíŒŒ ì ìš©
-    float alpha = baseAlpha + (angleDeg / angleForMax) * 0.45f; // 0.15 ~ 0.60 ê·¼ë°©
+    const float baseAlpha = 0.15f;      // ÃÖ¼Ò ÃßÁ¾ ¼Óµµ
+    const float angleForMax = 30.0f;    // 30¡Æ ÀÌ»óÀÌ¸é ÃÖ´ë ¾ËÆÄ Àû¿ë
+    float alpha = baseAlpha + (angleDeg / angleForMax) * 0.45f; // 0.15 ~ 0.60 ±Ù¹æ
     alpha = std::clamp(alpha, 0.15f, 0.60f);
 
     Vector3 vp = bb->VP_Cartesian;
@@ -101,10 +101,10 @@ NodeStatus Action::Task_MakeLOS::tick() {
         tgtFwd.X /= fwdmag; tgtFwd.Y /= fwdmag; tgtFwd.Z /= fwdmag;
     }
     else {
-        tgtFwd = toTarget; // í´ë°±
+        tgtFwd = toTarget; // Æú¹é
     }
 
-    // 50 m ì•ì§€ì 
+    // 50 m ¾ÕÁöÁ¡
     const float AHEAD_M = 50.0f;
     Vector3 vp;
     vp.X = targetPos.X + tgtFwd.X * AHEAD_M;
@@ -113,18 +113,18 @@ NodeStatus Action::Task_MakeLOS::tick() {
 
     bb->VP_Cartesian = vp;
 
-    // ì†ë„ ê´€ë¦¬ëŠ” ìƒìœ„ ë…¸ë“œì—ì„œ í•˜ë„ë¡ ê¶Œì¥. í•„ìš” ì‹œ ìœ ì§€/ì¡°ì •
+    // ¼Óµµ °ü¸®´Â »óÀ§ ³ëµå¿¡¼­ ÇÏµµ·Ï ±ÇÀå. ÇÊ¿ä ½Ã À¯Áö/Á¶Á¤
     bb->Throttle = 1.0f;
 
-    std::cout << "[MakeLOS] LOS ì •ë ¬ ì‹¤í–‰!" << std::endl;
+    std::cout << "[MakeLOS] LOS Á¤·Ä ½ÇÇà!" << std::endl;
 
 #ifdef MAKELOS_DEBUG
-    // ì›í•˜ëŠ” ë¡œê±°ë¡œ ë°”ê¿”ì„œ ì‚¬ìš© (ì˜ˆ: spdlog, UE_LOG, etc.)
+    // ¿øÇÏ´Â ·Î°Å·Î ¹Ù²ã¼­ »ç¿ë (¿¹: spdlog, UE_LOG, etc.)
     // printf("[MakeLOS] d=%.1f, ang=%.2f, alpha=%.2f, VP=(%.1f,%.1f,%.1f)\n",
     //        distance, angleDeg, alpha, vp.X, vp.Y, vp.Z);
 #endif
 
-    // ì¤‘ìš”: 900m ê²½ê³„ì—ì„œ ì²´ì¸ì´ ëŠê¸°ì§€ ì•Šë„ë¡ í•­ìƒ SUCCESS ë°˜í™˜
-    // (ì  ì—†ìŒ/ì˜ê±°ë¦¬ ë“± íŠ¹ìˆ˜ ì¼€ì´ìŠ¤ë§Œ FAILURE)
+    // Áß¿ä: 900m °æ°è¿¡¼­ Ã¼ÀÎÀÌ ²÷±âÁö ¾Êµµ·Ï Ç×»ó SUCCESS ¹İÈ¯
+    // (Àû ¾øÀ½/¿µ°Å¸® µî Æ¯¼ö ÄÉÀÌ½º¸¸ FAILURE)
     return NodeStatus::SUCCESS;
 }
