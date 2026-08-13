@@ -1,7 +1,7 @@
 #include "SetBFMMode_OBFM.h"
 #include <algorithm>
 
-namespace Action {  // ¡Ú Ãß°¡
+namespace Action {  // â˜… ì¶”ê°€
 
     static inline float clampf(float v, float lo, float hi) {
         return std::max(lo, std::min(hi, v));
@@ -20,8 +20,8 @@ namespace Action {  // ¡Ú Ãß°¡
         const float AA = BB->MyAspectAngle_Degree;
         const float D = BB->Distance;
 
-        const bool aa_ok = (AA < 35.0f);                   // [º¯°æ]
-        const bool dist_ok = (D >= 400.0f && D <= 1500.0f);  // [º¯°æ]
+        const bool aa_ok = (AA < 35.0f);                   // [ë³€ê²½]
+        const bool dist_ok = (D >= 400.0f && D <= 1500.0f);  // [ë³€ê²½]
 
         if (sight && e_sup && aa_ok && dist_ok) {
             BB->BFM = OBFM;

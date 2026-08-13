@@ -31,16 +31,16 @@ namespace Action {
         const std::string mode = updownO.value();
         const float targetAlt = std::stof(altO.value());
 
-        // ÇöÀç °íµµ
+        // í˜„ì¬ ê³ ë„
         const float Z = static_cast<float>(BB->MyLocation_Cartesian.Z);
 
-        // ¡Ú °­ÇÏÀ² ±Ù»ç(º¤ÅÍ ¾øÀÌ): Àü¹æº¤ÅÍÀÇ Z¼ººĞ ¡¿ ¼Óµµ(m/s)
+        // â˜… ê°•í•˜ìœ¨ ê·¼ì‚¬(ë²¡í„° ì—†ì´): ì „ë°©ë²¡í„°ì˜ Zì„±ë¶„ Ã— ì†ë„(m/s)
         const float Vz_est = static_cast<float>(BB->MyForwardVector.Z) * BB->MySpeed_MS;
 
-        // ±â¼ö ÇÇÄ¡(µµ): Àü¹æº¤ÅÍ Z¼ººĞÀ¸·Î ±Ù»ç
+        // ê¸°ìˆ˜ í”¼ì¹˜(ë„): ì „ë°©ë²¡í„° Zì„±ë¶„ìœ¼ë¡œ ê·¼ì‚¬
         const float pitch_deg = std::asin(clampf((float)BB->MyForwardVector.Z, -1.0f, 1.0f)) * 57.29578f;
 
-        // 2ÃÊ ÈÄ ¿¹Ãø °íµµ
+        // 2ì´ˆ í›„ ì˜ˆì¸¡ ê³ ë„
         const float horizon = 2.0f;
         const float Z_pred = Z + Vz_est * horizon;
 
@@ -48,14 +48,14 @@ namespace Action {
             return (Z > targetAlt) ? NodeStatus::SUCCESS : NodeStatus::FAILURE;
         }
         else if (mode == "Less") {
-            // (1) ÇöÀç °íµµ ¹Ì¸¸
+            // (1) í˜„ì¬ ê³ ë„ ë¯¸ë§Œ
             if (Z < targetAlt) return NodeStatus::SUCCESS;
 
-            // (2) ¿©À¯ °íµµ¶óµµ ±ŞÇÏ°­/±â¼öÇÏ°­ÀÌ¸é Á¶±â °³ÀÔ
+            // (2) ì—¬ìœ  ê³ ë„ë¼ë„ ê¸‰í•˜ê°•/ê¸°ìˆ˜í•˜ê°•ì´ë©´ ì¡°ê¸° ê°œì…
             const bool bad_descent = (Vz_est < -15.0f) || (pitch_deg < -5.0f);
             if ((Z < targetAlt + 150.0f) && bad_descent) return NodeStatus::SUCCESS;
 
-            // (3) ¿¹Ãø °íµµ ¹Ì¸¸
+            // (3) ì˜ˆì¸¡ ê³ ë„ ë¯¸ë§Œ
             if (Z_pred < targetAlt) return NodeStatus::SUCCESS;
 
             return NodeStatus::FAILURE;

@@ -3,19 +3,19 @@
 #include "../BlackBoard/CPPBlackBoard.h"
 #include <iostream>
 
-namespace Action {  // ¡Ú Ãß°¡
+namespace Action {  // â˜… ì¶”ê°€
 
     /*
-    Rule.xml:69 ¿¡¼­ ÀÌ ³ëµå´Â <Timeout msec="3500"> À¸·Î °¨½Î¿© ÀÖ´Ù.
-    TimeoutNode ´Â ÀÚ½ÄÀÌ RUNNING ÀÎ µ¿¾È¿¡¸¸ halt ¸¦ °É ¼ö ÀÖ´Ù
-    (decorators/timeout_node.cpp:74). SyncActionNode ´Â RUNNING À» ¹ÝÈ¯ÇÏ¸é
-    ¿¹¿Ü¸¦ ´øÁö¹Ç·Î(action_node.h:60) Timeout ÀÌ Àý´ë ¹ßÈ­ÇÏÁö ¸øÇÑ´Ù.
-    ±×·¡¼­ StatefulActionNode ·Î ÀüÈ¯ÇÑ´Ù.
+    Rule.xml:69 ì—ì„œ ì´ ë…¸ë“œëŠ” <Timeout msec="3500"> ìœ¼ë¡œ ê°ì‹¸ì—¬ ìžˆë‹¤.
+    TimeoutNode ëŠ” ìžì‹ì´ RUNNING ì¸ ë™ì•ˆì—ë§Œ halt ë¥¼ ê±¸ ìˆ˜ ìžˆë‹¤
+    (decorators/timeout_node.cpp:74). SyncActionNode ëŠ” RUNNING ì„ ë°˜í™˜í•˜ë©´
+    ì˜ˆì™¸ë¥¼ ë˜ì§€ë¯€ë¡œ(action_node.h:60) Timeout ì´ ì ˆëŒ€ ë°œí™”í•˜ì§€ ëª»í•œë‹¤.
+    ê·¸ëž˜ì„œ StatefulActionNode ë¡œ ì „í™˜í•œë‹¤.
 
-    »óÅÂ ÀÇ¹Ì
-      RUNNING : lead pursuit ÃßÁ¾À» °è¼Ó ¼öÇà Áß
-      SUCCESS : ÃßÁ¾ ¸ñÇ¥ ´Þ¼º(±â¼ö ±³Â÷°¢ÀÌ SETTLE_AO_DEG ÀÌÇÏ·Î ¼ö·Å À¯Áö)
-      FAILURE : ±âÇÏ°¡ ¹«È¿ÇÏ¿© ´ÙÀ½ Fallback ÀÚ½Ä¿¡°Ô ¾çº¸ (D < D_MIN)
+    ìƒíƒœ ì˜ë¯¸
+      RUNNING : lead pursuit ì¶”ì¢…ì„ ê³„ì† ìˆ˜í–‰ ì¤‘
+      SUCCESS : ì¶”ì¢… ëª©í‘œ ë‹¬ì„±(ê¸°ìˆ˜ êµì°¨ê°ì´ SETTLE_AO_DEG ì´í•˜ë¡œ ìˆ˜ë ´ ìœ ì§€)
+      FAILURE : ê¸°í•˜ê°€ ë¬´íš¨í•˜ì—¬ ë‹¤ìŒ Fallback ìžì‹ì—ê²Œ ì–‘ë³´ (D < D_MIN)
     */
     class Task_LeadPursuit : public BT::StatefulActionNode {
     public:
@@ -30,27 +30,27 @@ namespace Action {  // ¡Ú Ãß°¡
         BT::NodeStatus onRunning() override;
         void onHalted() override;
 
-        // ±âÁ¸ ±¸Çö¿¡ ÀÖ´ø À¯ÀÏÇÑ ¹«È¿ ±âÇÏ ÀÓ°è°ª (º¯°æ Àü Task_LeadPursuit.cpp:19)
+        // ê¸°ì¡´ êµ¬í˜„ì— ìžˆë˜ ìœ ì¼í•œ ë¬´íš¨ ê¸°í•˜ ìž„ê³„ê°’ (ë³€ê²½ ì „ Task_LeadPursuit.cpp:19)
         static constexpr float D_MIN = 250.0f;
 
-        // ÃßÁ¾ ¸ñÇ¥ ´Þ¼º ÆÇÁ¤ ÀÓ°è°ª.
-        // ±â¼ö ±³Â÷°¢ÀÌ ÀÌ °ª ÀÌÇÏ·Î SETTLE_DWELL_SEC µ¿¾È À¯ÁöµÇ¸é lead ÇØ¸¦ È®º¸ÇÑ °ÍÀ¸·Î º»´Ù.
+        // ì¶”ì¢… ëª©í‘œ ë‹¬ì„± íŒì • ìž„ê³„ê°’.
+        // ê¸°ìˆ˜ êµì°¨ê°ì´ ì´ ê°’ ì´í•˜ë¡œ SETTLE_DWELL_SEC ë™ì•ˆ ìœ ì§€ë˜ë©´ lead í•´ë¥¼ í™•ë³´í•œ ê²ƒìœ¼ë¡œ ë³¸ë‹¤.
         static constexpr float  SETTLE_AO_DEG = 10.0f;
         static constexpr double SETTLE_DWELL_SEC = 0.20;
 
     private:
-        // onStart / onRunning ÀÌ °øÀ¯ÇÏ´Â º»Ã¼.
+        // onStart / onRunning ì´ ê³µìœ í•˜ëŠ” ë³¸ì²´.
         BT::NodeStatus Advance(CPPBlackBoard* BB);
 
-        // ÀçÁøÀÔ ½Ã ÀÌÀü ½ÇÇàÀÌ ³²±ä °ªÀÌ º¸ÀÌÁö ¾Êµµ·Ï ÀüºÎ µÇµ¹¸°´Ù.
+        // ìž¬ì§„ìž… ì‹œ ì´ì „ ì‹¤í–‰ì´ ë‚¨ê¸´ ê°’ì´ ë³´ì´ì§€ ì•Šë„ë¡ ì „ë¶€ ë˜ëŒë¦°ë‹¤.
         void ResetInternalState();
 
         double  entry_time_sec_ = 0.0;
 
-        // ¸ñÇ¥ Á¶°ÇÀ» ¸¸Á·ÇÏ±â ½ÃÀÛÇÑ ½Ã°¢. À½¼ö¸é ¾ÆÁ÷ ¸¸Á·ÇÑ Àû ¾øÀ½.
+        // ëª©í‘œ ì¡°ê±´ì„ ë§Œì¡±í•˜ê¸° ì‹œìž‘í•œ ì‹œê°. ìŒìˆ˜ë©´ ì•„ì§ ë§Œì¡±í•œ ì  ì—†ìŒ.
         double  settle_since_sec_ = -1.0;
 
-        // halt ½Ã µÇµ¹¸± ÁøÀÔ Á÷ÀüÀÇ ÃßÁ¾Á¡. Áß´ÜµÈ ±âµ¿ÀÇ ¸í·ÉÀÌ ³²Áö ¾Ê°Ô ÇÑ´Ù.
+        // halt ì‹œ ë˜ëŒë¦´ ì§„ìž… ì§ì „ì˜ ì¶”ì¢…ì . ì¤‘ë‹¨ëœ ê¸°ë™ì˜ ëª…ë ¹ì´ ë‚¨ì§€ ì•Šê²Œ í•œë‹¤.
         Vector3 vp_on_entry_;
         bool    vp_saved_ = false;
     };

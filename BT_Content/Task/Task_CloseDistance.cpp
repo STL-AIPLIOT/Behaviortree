@@ -21,7 +21,7 @@ namespace Action
 
         if (bb->Enemy.empty()) return BT::NodeStatus::FAILURE;
 
-        // ÆÄ¶ó¹ÌÅÍ ÆÄ½Ì (±âº»°ª)
+        // íŒŒë¼ë¯¸í„° íŒŒì‹± (ê¸°ë³¸ê°’)
         float desiredRange = 900.0f;
         float leadTime = 2.0f;
         float upBias = 0.0f;
@@ -30,7 +30,7 @@ namespace Action
         if (auto s = getInput<std::string>("LeadTime")) { try { leadTime = std::stof(s.value()); } catch (...) {} }
         if (auto s = getInput<std::string>("UpBias")) { try { upBias = std::stof(s.value()); } catch (...) {} }
 
-        // Å¸±ê ¿¹ÃøÁ¡
+        // íƒ€ê¹ƒ ì˜ˆì¸¡ì 
         BT_Geometry::Vector3 tgtPos = bb->TargetLocaion_Cartesian;
         BT_Geometry::Vector3 tgtFwd = _norm(bb->TargetForwardVector);
         float tgtSpd = bb->TargetSpeed_MS;
@@ -38,23 +38,23 @@ namespace Action
         BT_Geometry::Vector3 tgtVel = tgtFwd * tgtSpd;
         BT_Geometry::Vector3 predict = tgtPos + tgtVel * leadTime;
 
-        // ³» À§Ä¡¿ÍÀÇ °Å¸®
+        // ë‚´ ìœ„ì¹˜ì™€ì˜ ê±°ë¦¬
         BT_Geometry::Vector3 myPos = bb->MyLocation_Cartesian;
         float d = myPos.distance(predict);
 
-        // ¾ÈÀü°íµµ º¸Á¤ (1000m ¹Ì¸¸ ±İÁö)
+        // ì•ˆì „ê³ ë„ ë³´ì • (1000m ë¯¸ë§Œ ê¸ˆì§€)
         float safeFloor = 1000.0f;
         float vpZ = predict.Z + upBias;
         if (vpZ < safeFloor) vpZ = safeFloor;
 
-        // °Å¸® À¯Áö/°¨¼Ò¿ë VP ¼³Á¤
-        // - ¸Ö¸é leadTime ±×´ë·Î, ÃæºĞÈ÷ °¡±î¿ì¸é ¸®µå Å¸ÀÓÀ» ÁÙ¿© °úµµÇÑ ¿À¹ö½´Æ® ¹æÁö
+        // ê±°ë¦¬ ìœ ì§€/ê°ì†Œìš© VP ì„¤ì •
+        // - ë©€ë©´ leadTime ê·¸ëŒ€ë¡œ, ì¶©ë¶„íˆ ê°€ê¹Œìš°ë©´ ë¦¬ë“œ íƒ€ì„ì„ ì¤„ì—¬ ê³¼ë„í•œ ì˜¤ë²„ìŠˆíŠ¸ ë°©ì§€
         float lt = (d > desiredRange) ? leadTime : (leadTime * 0.5f);
         BT_Geometry::Vector3 vp = tgtPos + tgtVel * lt;
         vp.Z = vpZ;
 
         bb->VP_Cartesian = vp;
-        // ¾²·ÎÆ²Àº Step¿¡¼­ 1.0À¸·Î µ¤¿©¾²´Â ±¸Á¶¶ó ¿©±â¼± °Çµå¸®Áö ¾ÊÀ½
+        // ì“°ë¡œí‹€ì€ Stepì—ì„œ 1.0ìœ¼ë¡œ ë®ì—¬ì“°ëŠ” êµ¬ì¡°ë¼ ì—¬ê¸°ì„  ê±´ë“œë¦¬ì§€ ì•ŠìŒ
         return BT::NodeStatus::SUCCESS;
     }
 }
