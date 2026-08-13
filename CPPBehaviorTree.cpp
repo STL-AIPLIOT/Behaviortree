@@ -146,6 +146,9 @@ void UCPPBehaviorTree::init()
 	Factory.registerNodeType<Action::Task_ClimbToSafeAltitude>("Task_ClimbToSafeAltitude");
 
 	Factory.registerNodeType<Action::SetBFMMode_OBFM>("SetBFMMode_OBFM");
+	Factory.registerNodeType<Action::Task_AggressiveOBFM>("Task_AggressiveOBFM");
+	// Task_AntiOvershoot 은 Rule.xml 에서 Task_AggressiveOBFM 으로 교체됐지만 등록은 남긴다.
+	// 등록을 지우면 예전 Rule.xml 을 그대로 쓰는 순간 createTreeFromFile 이 예외로 죽는다.
 	Factory.registerNodeType<Action::Task_AntiOvershoot>("Task_AntiOvershoot");
 	Factory.registerNodeType<Action::Task_CornerLeadPursuit>("Task_CornerLeadPursuit");
 	Factory.registerNodeType<Action::Task_LeadPursuit>("Task_LeadPursuit");
