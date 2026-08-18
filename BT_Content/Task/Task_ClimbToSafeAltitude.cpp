@@ -1,4 +1,5 @@
 #include "Task_ClimbToSafeAltitude.h"
+#include "../BTLog.h"
 #include <algorithm>
 #include <cmath>
 #include <iostream>
@@ -25,26 +26,42 @@ namespace Action {
 
         const Vector3 myPos = BB->MyLocation_Cartesian;
         const Vector3 fwd = BB->MyForwardVector;
-        const Vector3 up = BB->MyUpVector;
         const Vector3 right = BB->MyRightVector;
+
+        // [회전2] 상승 방향은 월드 +Z 다. MyUpVector 는 쿼터니언에서 뽑은 *동체* up 이라
+        // (DirectionVectorUpdate.cpp:32-34) 인버티드/고뱅크에서 Z<0 이 되고,
+        // 고도 회복 노드가 오히려 지면으로 몬다. MyLocation_Cartesian.Z 는
+        // LLAtoCartesian 의 dD = LLA.Z - BaseLLA.Z 이므로 미터 단위 고도다(LibMain.cpp:254).
+        const Vector3 world_up{ 0.0, 0.0, 1.0 };
 
         // 근사 강하율: 전방벡터 Z성분 × 속도
         const float Vz_est = float(fwd.Z) * BB->MySpeed_MS;
         const float pitch_deg = std::asin(clampf(float(fwd.Z), -1.0f, 1.0f)) * 57.29578f;
 
-        // 안전고도(ft 또는 m, 프로젝트 단위에 맞추세요)
-        const float kFloor = 1200.0f;
+        /*
+        안전고도 [m]. MyLocation_Cartesian.Z 는 LLAtoCartesian 의 dD 이므로 미터 단위 고도다.
+
+        [수정 2026-08-17] 1200 -> 450. Rule.xml 의 DECO_AltitudeCheck Altitude 와 같은 값이어야 한다.
+
+        규정 §5: 추락선은 1000ft(약 300m), 초기 배치는 "약 2000~3000ft 고도대"(약 610~914m).
+        1200m 는 **초기 배치 고도보다 높다**. 그대로 두면 경기 시작 순간부터 지면 회피 분기가
+        Fallback 최상단을 계속 점유해 SCISSORS/HABFM/OBFM/DBFM 이 한 번도 실행되지 않는다.
+        450m 는 추락선 300m 위로 150m 여유이고, 어떤 초기 배치 고도보다도 낮다.
+        급강하 방어는 DECO_AltitudeCheck 의 3초 예측이 맡는다(같은 커밋).
+        */
+        const float kFloor = 450.0f;
         const float margin = 200.0f;
         const float curZ = float(myPos.Z);
 
         // ---- 핵심 1: "수평 전방"을 만들어 Z 음수 기여 제거 ----
-        // fwd_h = fwd - up * dot(fwd,up)  (수평면으로 투영 후 정규화)
-        float dot_fu = float(fwd.X * up.X + fwd.Y * up.Y + fwd.Z * up.Z);
-        Vector3 fwd_h = fwd - up * dot_fu;
+        // [회전2] 월드 수평면으로 투영한다(Z 성분 제거). 이전에는 동체 up 으로
+        // 투영했는데(fwd - up*dot(fwd,up)) 그것은 동체 기준 평면이라 뱅크가 걸리면
+        // fwd_h.Z 가 0 이 되지 않아 "Z 음수 기여 제거"라는 의도가 성립하지 않았다.
+        Vector3 fwd_h = fwd;  fwd_h.Z = 0.0;
         float mag = length3(fwd_h);
         if (mag < 1e-3f) {
-            // 전방이 거의 위/아래로 향하면 수평 전방을 Right로 대체
-            fwd_h = right;
+            // 전방이 거의 위/아래로 향하면 수평 전방을 Right 의 수평 성분으로 대체
+            fwd_h = right;  fwd_h.Z = 0.0;
             mag = length3(fwd_h);
             if (mag < 1e-3f) {
                 // 혹시 모를 특이 케이스
@@ -60,7 +77,7 @@ namespace Action {
         const float climb = clampf(200.0f + 0.6f * spd, 250.0f, 800.0f);
 
         // ---- 목표점: "수평 전방 + 순수 상승" → Z는 언제나 증가 ----
-        Vector3 vp = myPos + fwd_h * ahead + up * climb;
+        Vector3 vp = myPos + fwd_h * ahead + world_up * climb;
 
         // ---- BFM 차단(선택적이지만 강력 추천): 회복 중엔 다른 BFM 루트 진입 방지 ----
         // DECO_BFMCheck들이 BB->BFM을 검사하므로 NONE으로 비워두면 대부분 전략이 차단됨
@@ -75,21 +92,25 @@ namespace Action {
         const bool good_pitch = (pitch_deg >= 2.0f);
         const bool climbing = (Vz_est > 5.0f);
 
-        std::cout << "[Task_ClimbToSafeAltitude] Recovering"
+        BT_VLOG("[Task_ClimbToSafeAltitude] Recovering"
             << " | pitch=" << pitch_deg
             << " Vz_est=" << Vz_est
             << " | ahead=" << ahead << " climb=" << climb
             << " | fwd_hZ=0 targetZ=" << vp.Z << " curZ=" << curZ
             << " | safe=" << (safe_alt && good_pitch && climbing ? "YES" : "NO")
-            << "\n";
+            << "\n");
 
-        // ---- 핵심 2: 회복 완료 전에는 RUNNING 유지 (다른 루트 실행 방지) ----
-        if (safe_alt && good_pitch && climbing) {
-            return NodeStatus::SUCCESS;   // 이제 다른 트리로 돌아가도 안전
-        }
-        else {
-            return NodeStatus::RUNNING;   // 회복 계속: 같은 노드가 우선권을 유지
-        }
+        // ---- 핵심 2: 회복 중에도 SUCCESS 를 돌려준다 ----
+        // [회전2] 이 노드는 SyncActionNode 이고 SyncActionNode::executeTick() 은
+        // 파생 클래스가 RUNNING 을 돌려주면 예외를 던진다(action_node.h:49-60).
+        // 예전 구현은 회복 중 RUNNING 을 반환했으므로, Rule.xml 에 배선하는 순간
+        // 첫 발화에서 바로 터졌을 것이다.
+        //
+        // 우선권은 RUNNING 이 아니라 Rule.xml 의 DECO_AltitudeCheck 가 매 tick
+        // 재평가해서 유지한다. 트리는 매 프레임 루트부터 다시 tick 되므로,
+        // 고도가 임계 아래인 동안 이 분기가 계속 먼저 잡히고 SUCCESS 가
+        // Fallback 을 여기서 멈춰 다른 BFM 이 실행되지 않는다.
+        return NodeStatus::SUCCESS;
     }
 
 } // namespace Action
