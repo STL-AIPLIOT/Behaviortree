@@ -42,6 +42,19 @@ namespace Action {
         안전고도 [m]. MyLocation_Cartesian.Z 는 LLAtoCartesian 의 dD 이므로 미터 단위 고도다.
 
         [수정 2026-08-17] 1200 -> 450. Rule.xml 의 DECO_AltitudeCheck Altitude 와 같은 값이어야 한다.
+        [수정 2026-08-17] 1200 -> 450. DECO_AltitudeCheck 의 Altitude 포트와 같은 값이어야 한다.
+
+        주의 — 이 트리(Behaviortree)의 Rule_STIL.xml 에는 **지면 회피 분기가 아예 없다**.
+        DECO_AltitudeCheck 와 이 노드는 Factory 에 등록만 돼 있고 XML 에서 도달할 수 없어,
+        현재 이 트리는 고도 하한 보호가 전혀 없는 상태다(규정 §5 추락선 300m).
+        공격형 변형(Behaviortree_ATK/Rule_STIL_ATK.xml)에는 GroundAvoidance_Branch 가 있다.
+        분기를 넣을지는 이 트리 담당자의 전술 판단이라 여기서 임의로 추가하지 않았다.
+        넣는다면 ATK 쪽과 동일하게:
+            <Sequence name="GroundAvoidance_Branch">
+                <DECO_AltitudeCheck BB="{BB}" UpDown="Less" Altitude="450"/>
+                <Task_ClimbToSafeAltitude BB="{BB}"/>
+            </Sequence>
+        를 SelectAndExecuteBFM Fallback 의 첫 자식으로 둔다.
 
         규정 §5: 추락선은 1000ft(약 300m), 초기 배치는 "약 2000~3000ft 고도대"(약 610~914m).
         1200m 는 **초기 배치 고도보다 높다**. 그대로 두면 경기 시작 순간부터 지면 회피 분기가

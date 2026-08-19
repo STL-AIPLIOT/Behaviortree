@@ -262,6 +262,11 @@ void UCPPBehaviorTree::init()
 	//  소스 차이는 이 문자열 하나뿐이어야 한다 — 그래야 A/B 가 성립한다.)
 	//
 	// [수정 2026-08-17] 기본값 "./Rule.xml" -> 팀 고유 이름.
+	//
+	// [수정 2026-08-17] 기본값 "./Rule.xml" -> "./Rule_STIL.xml".
+	// 공격형 변형(Behaviortree_ATK)은 "./Rule_STIL_ATK.xml" 을 쓴다. 두 DLL 이 같은 Release
+	// 루트에 놓이므로 XML 이름도 서로 달라야 한다 — 같은 이름이면 나중에 복사한 쪽이
+	// 상대 트리의 XML 을 읽고 자기 노드를 못 찾아 죽는다.
 	// 규정 §9 제출물이 "코드·모델·XML"이고, Release 루트에는 벤더 DLL 이 읽는 XML 과
 	// 우리 XML 이 함께 놓인다. 일반명 Rule.xml 을 쓰면 벤더 AIP_BASE_target.dll 이
 	// 우리 XML 을 집어 자기 노드를 못 찾고 죽는다(아래 1번과 같은 사고).
