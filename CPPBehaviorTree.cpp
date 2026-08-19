@@ -258,6 +258,10 @@ void UCPPBehaviorTree::init()
 	//
 	// 파일명을 하드코딩하지 않는다. 환경변수 BT_RULE_XML 이 있으면 그 경로를 쓰고,
 	// 없으면 팀 고유 이름인 "./Rule_STIL.xml" 이다.
+	// (ATK 트리는 같은 자리에서 "./Rule_STIL_ATK.xml" 을 쓴다. 두 트리의
+	//  소스 차이는 이 문자열 하나뿐이어야 한다 — 그래야 A/B 가 성립한다.)
+	//
+	// [수정 2026-08-17] 기본값 "./Rule.xml" -> 팀 고유 이름.
 	//
 	// [수정 2026-08-17] 기본값 "./Rule.xml" -> "./Rule_STIL.xml".
 	// 공격형 변형(Behaviortree_ATK)은 "./Rule_STIL_ATK.xml" 을 쓴다. 두 DLL 이 같은 Release

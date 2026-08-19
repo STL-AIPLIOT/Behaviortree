@@ -41,6 +41,7 @@ namespace Action {
         /*
         안전고도 [m]. MyLocation_Cartesian.Z 는 LLAtoCartesian 의 dD 이므로 미터 단위 고도다.
 
+        [수정 2026-08-17] 1200 -> 450. Rule.xml 의 DECO_AltitudeCheck Altitude 와 같은 값이어야 한다.
         [수정 2026-08-17] 1200 -> 450. DECO_AltitudeCheck 의 Altitude 포트와 같은 값이어야 한다.
 
         주의 — 이 트리(Behaviortree)의 Rule_STIL.xml 에는 **지면 회피 분기가 아예 없다**.

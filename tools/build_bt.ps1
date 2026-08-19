@@ -72,13 +72,20 @@
   .\tools\build_bt.ps1 -Deploy
 #>
 param(
-    [string]$HostRoot    = $(if ($env:AIP_DCS_ROOT) { $env:AIP_DCS_ROOT } else { "C:\AIP_LIB\AIP_DCS_ATK" }),
+    # [수정 2026-08-18] 이 파일의 기본값이 전부 ATK 를 가리키고 있었다
+    # (HostRoot=AIP_DCS_ATK, BinName=bin_atk, TeamName=STIL_ATK, RuleXmlName=Rule_ATK.xml).
+    # 그대로 돌리면 비-ATK 소스가 ATK 호스트 트리로 동기화되고 ATK 빌드를 덮어써서
+    # 두 DLL 이 같은 소스로 만들어진다 - A/B 가 에러 없이 무의미해진다.
+    # 원본 트리의 값으로 되돌린다.
+    [string]$HostRoot    = $(if ($env:AIP_DCS_ROOT) { $env:AIP_DCS_ROOT } else { "C:\AIP_LIB\AIP_DCS" }),
     [string]$ReleaseDir  = "C:\AIP_LIB\DogFightEnv\Release",
     [string]$Config      = "Debug",
     [string]$Platform    = "x64",
-    [string]$TeamName    = "STIL_ATK",
-    [string]$BinName     = "bin_atk",
-    [string]$RuleXmlName = "Rule_ATK.xml",
+    [string]$TeamName    = "STIL",
+    [string]$BinName     = "bin",
+    # 배포 이름은 CPPBehaviorTree.cpp 의 기본 XML 과 같아야 BT_RULE_XML 없이 동작한다.
+    [string]$RuleXmlName = "Rule_STIL.xml",
+    [string]$RuleXmlSource = "Rule_STIL.xml",
     [switch]$Deploy,
     # A/B 비교용. 각도 wrap 보정만 끈 'before' DLL 을 만든다.
     # BT_Content/AngleUtil.h 의 PM_DISABLE_WRAP_FIX 설명 참조.
@@ -230,7 +237,7 @@ if (-not $Deploy) {
     # 빌드할 이유가 없어 이 스크립트조차 안 돌리게 되고, DLL 은 옛 XML 을 계속 읽는다.
     # 파싱은 성공하므로 에러 없이 노드 구성만 달라진다 — 조용해서 추적이 어렵다.
     $rtXml = Join-Path $ReleaseDir $RuleXmlName
-    $tmXml = Join-Path $TeamRoot   "Rule.xml"
+    $tmXml = Join-Path $TeamRoot   $RuleXmlSource
     if ((Test-Path $rtXml) -and (Test-Path $tmXml)) {
         $hr = (Get-FileHash $rtXml -Algorithm SHA256).Hash
         $ht = (Get-FileHash $tmXml -Algorithm SHA256).Hash
@@ -259,9 +266,15 @@ if ($Deploy) {
         }
     }
 
+    # [2026-08-18] 대상 파일을 먼저 지운다. Windows 는 대소문자를 구분하지 않지만
+    # 보존은 하므로, 예전에 만들어진 Rule_stil.xml 이 남아 있으면 Copy-Item 이
+    # 내용만 덮어쓰고 이름은 소문자로 유지한다. 런타임은 열리지만 규정 §9 제출물
+    # 이름이 틀리게 되고, ls 로 봐야만 드러나 조용히 넘어간다.
+    foreach ($p in @($teamDll, $teamXml)) { Remove-Item $p -Force -ErrorAction SilentlyContinue }
+
     Write-Host "`n[deploy] -> $ReleaseDir"
     Copy-Item $target.FullName -Destination $teamDll -Force
-    Copy-Item (Join-Path $HostRoot "BehaviorTree\Rule.xml") -Destination $teamXml -Force
+    Copy-Item (Join-Path $HostRoot "BehaviorTree\$RuleXmlSource") -Destination $teamXml -Force
     Write-Host "  $($target.Name) -> AIP_$TeamName.dll"
     Write-Host "  Rule.xml -> $RuleXmlName"
     Write-Host ""
