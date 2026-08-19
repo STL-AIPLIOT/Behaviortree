@@ -257,11 +257,9 @@ void UCPPBehaviorTree::init()
 	//파일로 트리 구조 정의
 	//
 	// 파일명을 하드코딩하지 않는다. 환경변수 BT_RULE_XML 이 있으면 그 경로를 쓰고,
-	// 없으면 팀 고유 이름인 "./Rule_STIL.xml" 이다.
-	// (ATK 트리는 같은 자리에서 "./Rule_STIL_ATK.xml" 을 쓴다. 두 트리의
-	//  소스 차이는 이 문자열 하나뿐이어야 한다 — 그래야 A/B 가 성립한다.)
+	// 없으면 팀 고유 이름인 "./Rule_STIL.xml" 이다. (ATK 트리는 Rule_STIL_ATK.xml)
 	//
-	// [수정 2026-08-17] 기본값 "./Rule.xml" -> 팀 고유 이름.
+	// [수정 2026-08-17] 기본값 "./Rule.xml" -> "./Rule_STIL_ATK.xml".
 	// 규정 §9 제출물이 "코드·모델·XML"이고, Release 루트에는 벤더 DLL 이 읽는 XML 과
 	// 우리 XML 이 함께 놓인다. 일반명 Rule.xml 을 쓰면 벤더 AIP_BASE_target.dll 이
 	// 우리 XML 을 집어 자기 노드를 못 찾고 죽는다(아래 1번과 같은 사고).
@@ -283,7 +281,22 @@ void UCPPBehaviorTree::init()
 	{
 		if (envPath[0] != '\0') { rulePath = envPath; }
 	}
-	if (BtDiagEnabled()) { BtDiag("[init] rule xml = " + rulePath); }
+	if (BtDiagEnabled())
+	{
+		/*
+		[A/계측 2026-08-19] 경로만으로는 "어느 XML 이 실제로 읽혔는가" 를 못 가린다.
+		v3p 에서 우리 XML(8,404 B) 대신 5,947 B 짜리 옛 파일이 읽힌 사고가 있었는데,
+		경로 문자열은 정상으로 보였다. 같은 이름의 다른 파일이었기 때문이다.
+		크기를 함께 남겨 파일 동일성을 바로 판별한다.
+		*/
+		std::streamoff xml_bytes = -1;
+		{
+			std::ifstream probe(rulePath, std::ios::binary | std::ios::ate);
+			if (probe.is_open()) { xml_bytes = probe.tellg(); }
+		}
+		BtDiag("[init] rule xml = " + rulePath +
+			"  bytes=" + (xml_bytes >= 0 ? std::to_string(xml_bytes) : std::string("(열기 실패)")));
+	}
 	tree = Factory.createTreeFromFile(rulePath);
 
 	// 트리가 실제로 만들어졌는지 (노드 개수 포함) 파일로 남긴다.
