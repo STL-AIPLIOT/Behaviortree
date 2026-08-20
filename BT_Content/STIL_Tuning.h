@@ -111,4 +111,30 @@ namespace STIL
     // 0 이면 현행(즉시 상승 VP)으로 되돌린다.
     inline bool  RollLevelFirst()     { return STIL_TUNABLE_ON("STIL_ROLL_LEVEL_FIRST", true); }
     inline float RollLevelMaxBank()   { return STIL_TUNABLE_F("STIL_ROLL_LEVEL_MAX_BANK", 45.0); }
+
+    // ---- H. DBFM 정조준 가드 (2026-08-20 계측용) ----------------------------
+    /*
+    08-17 커밋 07f149f 가 SetBFMMode_DBFM 에서 지운 조건을 되살릴 수 있게 한다.
+
+        const bool los_ok = (los_deg >= 15.0f);
+
+    los_deg = BB->Los_Degree_Target, 곧 적기 기수와 (적기->나) 벡터의 각이다.
+    작을수록 적기가 나를 정조준한 상태다. 조건의 의미는 "적기가 나를 겨누고 있으면
+    DBFM 에 들어가지 않는다" 이고, 07f149f 는 이를 "방어가 가장 필요한 순간 방어를
+    닫는다" 는 결함으로 보고 삭제했다. 교리로는 타당한 지적이다.
+
+    그런데 EXP-012(2026-08-20, 7팔 140판)에서 08-19 커밋 A~F 를 어떤 조합으로 되돌려도
+    유효타율이 0.00~1.47% 에 머물렀다. EXP-008b(08-14)는 같은 초기 배치에서 16.46% 였다.
+    남은 차이가 08-17 뿐이고, 그중 이 조건이 사격 자세에 직접 닿는 유일한 변경이다.
+
+    가설: 가드가 있던 시절에는 정조준당한 순간 DBFM 이 막혀 Fallback 이
+    NormalTracking -> Task_FollowTarget 으로 떨어졌고, FollowTarget 은 표적을 정면으로
+    겨누므로 |ATA| 가 작아져 대미지 콘(1.0deg)에 들어갔다. 대칭 자가대전이라 양쪽 모두
+    그랬고 20/20 판에서 상호 피해가 났다.
+
+    기본값 false = 현행 동작 유지. 계측할 때만 STIL_DBFM_LOS_GUARD=1 을 준다.
+    이 값을 켜는 것은 "방어를 포기하고 조준을 산다" 는 트레이드오프이지 버그 수정이 아니다.
+    */
+    inline bool  DbfmLosGuard()       { return STIL_TUNABLE_ON("STIL_DBFM_LOS_GUARD", false); }
+    inline float DbfmLosGuardDeg()    { return STIL_TUNABLE_F("STIL_DBFM_LOS_GUARD_DEG", 15.0); }
 }
