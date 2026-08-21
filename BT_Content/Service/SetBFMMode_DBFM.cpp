@@ -1,4 +1,5 @@
 #include "SetBFMMode_DBFM.h"
+#include "../STIL_Tuning.h"
 #include "../BTLog.h"
 #include <iostream>
 #include <algorithm>
@@ -48,7 +49,14 @@ BT::NodeStatus SetBFMMode_DBFM::tick()
     거리·시야만 보고 진입하게 되돌린다. 반격 여부는 아래 geom_ok 가 따로 판단한다.
     */
 
-    if (sight && dist_ok)
+    /*
+    [H/계측 2026-08-20] 위에서 지운 los_ok 를 환경변수로 되살릴 수 있게 한다.
+    기본값 false 이므로 현행 동작(거리·시야만 본다)은 그대로다. 근거는 STIL_Tuning.h 의
+    H 절 참조 — EXP-012 가 08-19 커밋 A~F 를 전부 배제한 뒤 남은 유일한 후보다.
+    */
+    const bool los_ok = !STIL::DbfmLosGuard() || (los_deg >= STIL::DbfmLosGuardDeg());
+
+    if (sight && dist_ok && los_ok)
     {
         BB->BFM = DBFM;
 
@@ -70,6 +78,8 @@ BT::NodeStatus SetBFMMode_DBFM::tick()
     // 진입 실패 사유 로그
     BT_VLOG("[SetBFMMode_DBFM] t=" << BB->MatchTimeSec() << "s | Blocked"
         << " | sight=" << sight
+        << ", dist_ok=" << dist_ok
+        << ", los_ok=" << los_ok          // H/계측: 정조준 가드로 막힌 tick 을 귀속한다
         << ", D=" << D << ", LOSt=" << los_deg
         << ", AA=" << AA << "\n");
     return BT::NodeStatus::FAILURE;
